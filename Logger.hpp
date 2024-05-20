@@ -1,7 +1,7 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 #pragma once
-#include <string>
+#include <iostream>
 
 #ifdef __MACH__
 #define COLOR_RED "\033[1;31m"
