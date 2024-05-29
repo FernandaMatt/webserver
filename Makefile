@@ -1,4 +1,4 @@
-NAME = listener
+NAME = webserv
 
 SRCS = $(wildcard *.cpp)
 
