@@ -1,4 +1,5 @@
 #include "Parser.hpp"
+#include "src/RequestParser.hpp"
 #include "defines.hpp"
 
 int main(int argc, char **argv) {
@@ -19,6 +20,16 @@ int main(int argc, char **argv) {
 			servers[i].listen();
 			servers[i].print_all_directives();
 		}
+	}
+	catch (std::exception &e) {
+		std::cerr << e.what() << std::endl;
+	}
+
+	try{
+		RequestParser reqParser;
+
+		httpRequest req = reqParser.parseRequest("DELETE / HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/7.68.0\r\nAccept: */*\r\n\r\n");
+		req.printRequest();
 	}
 	catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
