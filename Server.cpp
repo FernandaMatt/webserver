@@ -1,11 +1,14 @@
 #include "Server.hpp"
 
 Server::Server() {
-    _client_max_body_size = 1000000;
-    _autoindex = "off";
+    this->_client_max_body_size = 1000000;
+    this->_autoindex = "off";
+    this->_sock_fd = -1;
+
 }
 
 Server::~Server() {
+
 }
 
 //void    Server::init_error_pages() {
@@ -20,7 +23,7 @@ Server::~Server() {
     //5XX Erros do servidor
     //500 Internal Server Error - erro interno no servidor
     //501 Not Implemented - servidor nao reconhece o metodo
-    //502 Bad Gateway 
+    //502 Bad Gateway
     //503 Service Unavailable - sobrecarga ou manutencao do servidor
     //504 Gateway Timeout - nao recebeu resposta a tempo
     //505 HTTP Version Not Supported - nao suporta a versao HTTP
@@ -34,7 +37,7 @@ void    Server::set_listen(std::string listen) {
         std::string host = listen.substr(0, colon_pos);
         std::string port = listen.substr(colon_pos + 1);
         if (host.find(':') != std::string::npos) { //endereco ipv6
-            if (host[0] != '[' && host[host.size() - 1] != ']') 
+            if (host[0] != '[' && host[host.size() - 1] != ']')
                 throw std::runtime_error("Error in config file: invalid ipv6 address format");
             host = host.substr(1, host.size() - 2);
         }
@@ -134,23 +137,23 @@ void    Server::set_error_page(std::string error_page) {
     pos_semicolon = error_page.find(';');
     if (pos_semicolon == std::string::npos)
         throw std::runtime_error("Error in config file: invalid error page");
-    
+
     pos_space = error_page.find(' ');
     if (pos_space == std::string::npos)
         throw std::runtime_error("Error in config file: invalid error page");
-    
+
     std::string error_code_str = error_page.substr(0, pos_space);
     for (size_t i = 0; i < error_code_str.size(); i++) {
         if (!std::isdigit(error_code_str[i]))
             throw std::runtime_error("Error in config file: invalid error page");
     }
     int error_code = atoi(error_code_str.c_str());
-    if (error_code < 400 || error_code > 599) 
-        throw std::runtime_error("Error in config file: invalid error page");         
+    if (error_code < 400 || error_code > 599)
+        throw std::runtime_error("Error in config file: invalid error page");
 
     std::string error_path = error_page.substr(pos_space + 1, pos_semicolon - pos_space - 1);
     if (error_path.find(' ') != std::string::npos)
-        throw std::runtime_error("Error in config file: invalid error page");         
+        throw std::runtime_error("Error in config file: invalid error page");
     _error_pages[error_code] = error_path;
 }
 
@@ -167,9 +170,9 @@ void    Server::set_methods(std::string methods) {
             method = methods.substr(pos);
             pos = methods.size();
         }
-        if (method != "GET" && method != "POST" && method != "DELETE" && 
+        if (method != "GET" && method != "POST" && method != "DELETE" &&
             method != "get" && method != "post" && method != "delete") {
-            throw std::runtime_error("Error in config file: invalid methods" + method); }        
+            throw std::runtime_error("Error in config file: invalid methods" + method); }
         _methods.push_back(method);
     }
 }
@@ -179,52 +182,50 @@ void    Server::set_location(Location &location) {
     _locations.push_back(location);
 }
 
-void    Server::set_listener() {
+void    Server::set_sock_fd() {
 
-    struct addrinfo hint;
+    struct addrinfo hints;
     struct addrinfo *result;
+    struct addrinfo *rp;
+    int             status;
     int yes = 1;
-    int error;
 
-    hint = {0};
-    hint.ai_family = AF_UNSPEC;
-    hint.ai_socktype = SOCK_STREAM;
-    hint.ai_protocol = 0;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_protocol = 0;
 
-    if ((error = getaddrinfo(_host.c_str(), _port.c_str(), &hint, &result)) != 0) {
-        Logger::log(LOG_ERROR, gai_strerror(error));
-        throw std::runtime_error("Error");
+    status = getaddrinfo(this->_host.c_str(), this->_port.c_str(), &hints, &result);
+    if (status != 0) {
+        Logger::log(LOG_ERROR, gai_strerror(status));
+        throw std::runtime_error("Error: getaddrinfo()");
     }
 
-    switch (result->ai_family) {
-    case AF_INET:
-        memmove(&_addr_info, result->ai_addr, sizeof(struct sockaddr_in));
-        break;
-    case AF_INET6:
-        memmove(&_addr_info, result->ai_addr, sizeof(struct sockaddr_in6));
-        break;
-    default:
-        Logger::log(LOG_ERROR, "Uncaught error");
-        throw std::runtime_error("Error");
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        this->_sock_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+
+        if(this->_sock_fd == -1)
+            continue;
+
+        int option = 1;
+        if (setsockopt(this->_sock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1){
+            Logger::log(LOG_ERROR, "setsockopt() failure");
+            close(this->_sock_fd);
+            freeaddrinfo(result);
+            throw std::runtime_error("Error: setsockopt()");
+        }
+
+        if (bind(this->_sock_fd, rp->ai_addr, rp->ai_addrlen) == 0)
+            break ;
     }
 
-    if ((_sock_fd = socket(result->ai_family, result->ai_socktype | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) == -1) {
-        Logger::log(LOG_ERROR, "Error in socket");
+    if(rp == NULL){ //No address succeded
+        Logger::log(LOG_ERROR, "Could not bind");
         freeaddrinfo(result);
-        throw std::runtime_error("Error");
+        throw std::runtime_error("Error: bind()");
     }
 
-    if ((setsockopt(_sock_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))) == -1) {
-        Logger::log(LOG_ERROR, "Error in setsockopt");
-        freeaddrinfo(result);
-        throw std::runtime_error("Error");
-    }
-
-    if (bind(_sock_fd, result->ai_addr, result->ai_addrlen) == -1) {
-        Logger::log(LOG_ERROR, strerror(errno));
-        freeaddrinfo(result);
-        throw std::runtime_error("Error");
-    }
     freeaddrinfo(result);
 }
 
@@ -256,48 +257,30 @@ std::vector<std::string>    Server::get_methods() {return _methods;}
 
 std::vector<Location>    Server::get_location() {return _locations;}
 
-int Server::get_sock_fd() {return _sock_fd;}
+int Server::get_sock_fd() const {return _sock_fd;}
 
 //methods
-
-bool    Server::listen(void) const {
-    std::string hostPort;
-    hostPort = _host + ":" + _port;
-
-    if (::listen(_sock_fd, SOMAXCONN) == -1) {
-      Logger::log(LOG_ERROR, (std::string("Listen failed for pair ") + hostPort).c_str());
-        throw std::runtime_error("Error");
-	}
-    Logger::log(LOG_INFO, (std::string("Listening on ") + hostPort).c_str());
-    return(true);
-}
-
-
-
-
-
-
 
 void    Server::print_all_directives() {
 
     std::cout << "   port: " << _port << std::endl;
     std::cout << "   host: " << _host << std::endl;
-    std::cout << "   root: " << _root << std::endl; 
+    std::cout << "   root: " << _root << std::endl;
     std::cout << "   client_max_body_size: " << _client_max_body_size << std::endl;
-    std::cout << "   autoindex " << _autoindex << std::endl; 
+    std::cout << "   autoindex " << _autoindex << std::endl;
     std::cout << "   server_name [ size = " << _server_name.size() << " ]: ";
     for (size_t i = 0; i < _server_name.size(); i++) {
-        std::cout << _server_name[i] << " "; 
+        std::cout << _server_name[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "   index [ size = " << _index.size() << " ]: ";
     for (size_t i = 0; i < _index.size(); i++) {
-        std::cout << _index[i] << " "; 
+        std::cout << _index[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "   methods [ size = " << _methods.size() << " ]: ";
     for (size_t i = 0; i < _methods.size(); i++) {
-        std::cout << _methods[i] << " "; 
+        std::cout << _methods[i] << " ";
     }
     std::cout << std::endl;
     std::map<int, std::string>::iterator it;
@@ -309,6 +292,6 @@ void    Server::print_all_directives() {
     for (size_t i = 0; i < _locations.size(); i++) {
         std::cout << "   location " << _locations[i].get_path() << " {" << std::endl;
         _locations[i].print_all_directives();
-    }    
+    }
     std::cout << std::endl;
 }
