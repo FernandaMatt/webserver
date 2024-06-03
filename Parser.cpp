@@ -76,7 +76,7 @@ void Parser::reformat_config(std::string &content) {
     content.clear();
     // format the file to be read
     for (size_t i = 0; i < aux.size(); i++) {
-        if (aux[i] == ';') 
+        if (aux[i] == ';')
             content += ";\n";
         else if (aux[i] == '{' || aux[i] == '}'){
             content += aux[i];
@@ -109,7 +109,7 @@ void    Parser::split_servers(std::string const &content) {
             brace++;
 
             while (pos < content.length() && std::isspace(content[pos])) pos++;
-            //find the end of the server and count braces 
+            //find the end of the server and count braces
             while (pos < content.length() && brace > 0) {
                 if (content[pos] == '{') brace++;
                 else if (content[pos] == '}') brace--;
@@ -120,12 +120,12 @@ void    Parser::split_servers(std::string const &content) {
             end = pos - 1;
              _server_block.push_back(content.substr(start, end - start + 1));
             continue;
-        } else 
+        } else
             throw std::runtime_error("Error in config file: invalid directive");
     }
 }
 
-//check duplicate directives, remove semicolon in the end of the line and set map directive 
+//check duplicate directives, remove semicolon in the end of the line and set map directive
 void    Parser::set_directive(std::string &key, std::string &value, std::map<std::string, std::string>&directives) {
     if (directives.find(key) != directives.end() && key != "error_page")
         throw std::runtime_error("Error in config file: duplicate directive " + key);
@@ -160,15 +160,15 @@ void    Parser::parse_directives(std::string const &server_block) {
         else if (line.compare(0, 8, "server {") == 0 && in_server)
             throw std::runtime_error("Error in config file: invalid directive inside a server scope");
         else if (line[0] == '}') break;
-        
+
         //split key and value for set_directives
         size_t pos_space = line.find(' ');
         if (pos_space == std::string::npos)
             throw std::runtime_error("Error in config file: " + line);
-        
+
         std::string key = line.substr(0, pos_space);
         std::string value = line.substr(pos_space + 1);
-        
+
         //check and set valid directives
         if (key == "location"){
             Location location;
@@ -189,7 +189,7 @@ void    Parser::parse_directives(std::string const &server_block) {
         else if (key == "listen" || key == "server_name" || key == "index" || key == "autoindex" ||
                     key == "root" || key == "allow_methods" || key == "client_max_body_size")
             set_directive(key, value, directives);
-        //invalid directive or other error 
+        //invalid directive or other error
         else
             throw std::runtime_error("Error in config file: " + line);
     }
@@ -209,8 +209,8 @@ void    Parser::parse_directives(std::string const &server_block) {
     if (directives.find("allow_methods") != directives.end()) server.set_methods(directives["allow_methods"]);
     else server.set_methods("GET POST");
     if (directives.find("client_max_body_size") != directives.end()) server.set_client_max_body_size(directives["client_max_body_size"]);
-    
-    server.set_listener();
+
+    server.set_sock_fd();
     _servers.push_back(server);
 }
 
@@ -220,20 +220,20 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
     std::string error_pages;
     std::map<std::string, std::string> directives;
     bool    in_path = true;
-    
+
     while (std::getline(ss, line)) {
         if (line.empty())
-            continue;        
+            continue;
         else if (line[0] == '}') break;
-        
+
         //split key and value for set_directives
         size_t pos_space = line.find(' ');
         if (pos_space == std::string::npos)
             throw std::runtime_error("Error in location config file: " + line);
-        
+
         std::string key = line.substr(0, pos_space);
         std::string value = line.substr(pos_space + 1);
-        
+
         //set path location
         if (in_path == true && key == "location") {
             in_path == false;
@@ -255,7 +255,7 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
         else if (key == "root" || key == "alias" || key == "index" || key == "autoindex" ||
                     key == "allow_methods" || key == "client_max_body_size")
             set_directive(key, value, directives);
-        //invalid directive or other error 
+        //invalid directive or other error
         else
             throw std::runtime_error("Error in config file: " + line);
     }
@@ -267,6 +267,6 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
     if (directives.find("allow_methods") != directives.end()) location.set_methods(directives["allow_methods"]);
     else location.set_methods("GET POST");
     if (directives.find("client_max_body_size") != directives.end()) location.set_client_max_body_size(directives["client_max_body_size"]);
-    
+
     return location;
 }

@@ -1,5 +1,5 @@
-#ifndef SERVERCONFIG_HPP
-# define SERVERCONFIG_HPP
+#ifndef SERVER_HPP
+# define SERVER_HPP
 # include "Logger.hpp"
 # include "Location.hpp"
 # include <string>
@@ -21,7 +21,7 @@ class Server {
     public:
         Server();
         ~Server();
-        
+
         //setters
         void    set_listen(std::string listen);
         void    set_port(std::string port);
@@ -34,7 +34,7 @@ class Server {
         void    set_error_page(std::string error_page);
         void    set_methods(std::string methods);
         void    set_location(Location &location);
-        void    set_listener();
+        void    set_sock_fd(); //create and bind
 
         //getters
         std::string                 get_port();
@@ -48,11 +48,10 @@ class Server {
         std::string                 get_error_page_path(int error_code);
         std::vector<std::string>    get_methods();
         std::vector<Location>       get_location();
-        int                         get_sock_fd();
+        int                         get_sock_fd() const;
 
         //void    init_error_pages();
-        bool    listen(void) const;
-        void    print_all_directives();
+         void    print_all_directives();
 
     private:
         std::string                 _port;
@@ -65,9 +64,8 @@ class Server {
         std::map<int, std::string>  _error_pages;
         std::vector<std::string>    _methods;
         std::vector<Location>       _locations;
-        
+
         int                         _sock_fd;
-        struct sockaddr_storage     _addr_info;
 };
 
 //set default error pages

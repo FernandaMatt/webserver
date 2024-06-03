@@ -8,4 +8,10 @@
 #define GRN		"\033[32m"
 #define RST		"\033[0m"
 
+#define MAX_EVENTS 10
+#define BUF_SIZE 1024
+
+#define LOGGING_ENABLED 1
+#define	DEBUG_ENABLED 1
+
 #endif
