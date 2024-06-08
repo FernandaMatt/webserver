@@ -1,56 +1,42 @@
 #include "Server.hpp"
 
 Server::Server() {
-    this->_client_max_body_size = 1000000;
-    this->_autoindex = "off";
-    this->_sock_fd = -1;
-
+    this->_client_max_body_size = -1;
 }
 
 Server::~Server() {
-
 }
 
-//void    Server::init_error_pages() {
-    //4XX Erros do cliente
-    //400 Bad Request - sintaxe invalida
-    //401 Unauthorized - requer autorização de usuario
-    //403 Forbidden - nao tem permissão
-    //404 Not Found - Servidor nao encontrou o recurso
-    //405 Method Not Allowed - método nao é permitido
-    //408 Request Timeout - Servidor atingiu o tempo limite
-
-    //5XX Erros do servidor
-    //500 Internal Server Error - erro interno no servidor
-    //501 Not Implemented - servidor nao reconhece o metodo
-    //502 Bad Gateway
-    //503 Service Unavailable - sobrecarga ou manutencao do servidor
-    //504 Gateway Timeout - nao recebeu resposta a tempo
-    //505 HTTP Version Not Supported - nao suporta a versao HTTP
-//}
-
 //setters
-
-void    Server::set_listen(std::string listen) {
+void    Server::set_listeners(std::string listen) {
+    Listen listener;
     size_t colon_pos = listen.find_last_of(':');
+    
     if (colon_pos != std::string::npos) {
         std::string host = listen.substr(0, colon_pos);
         std::string port = listen.substr(colon_pos + 1);
-        if (host.find(':') != std::string::npos) { //endereco ipv6
+        if (host.find(':') != std::string::npos) { // ipv6
             if (host[0] != '[' && host[host.size() - 1] != ']')
                 throw std::runtime_error("Error in config file: invalid ipv6 address format");
             host = host.substr(1, host.size() - 2);
         }
-        set_host(host);
-        set_port(port);
+        if (host == "localhost")
+            host = "127.0.0.1";
+        check_host(host);
+        check_port(port);
+        check_duplicate_listen(host, port);
+        listener = {host, port};
+        _listeners.push_back(listener);
     }
     else {
-        set_port(listen);
-        set_host("127.0.0.1");
+        check_port(listen);
+        check_duplicate_listen("0.0.0.0", listen);
+        listener = {"0.0.0.0", listen};
+        _listeners.push_back(listener);
     }
 }
 
-void    Server::set_port(std::string port) {
+void    Server::check_port(std::string port) {
     for (size_t i = 0; i < port.size(); i++) {
         if (!std::isdigit(port[i]))
             throw std::runtime_error("Error in config file: invalid port " + port);
@@ -58,26 +44,30 @@ void    Server::set_port(std::string port) {
     int port_int = atoi(port.c_str());
     if (port_int < 0 || port_int > 65535)
         throw std::runtime_error("Error in config file: invalid port " + port);
-    _port = port;
 }
 
-void    Server::set_host(std::string host) {
+void    Server::check_host(std::string host) {
     if (host.find(' ') != std::string::npos)
         throw std::runtime_error("Error in config file: invalid host " + host);
     for (size_t i = 0; i < host.size(); i++) {
         if (!std::isdigit(host[i]) && host[i] != '.' && host[i] != ':')
             throw std::runtime_error("Error in config file: invalid host " + host);
     }
-    if (host == "localhost") _host = "127.0.0.1";
-    else _host = host;
 }
 
-void    Server::set_root(std::string root) {_root = root;}
-
+void    Server::set_root(std::string root) {
+    if (!_root.empty())
+        throw std::runtime_error("Error in config file: duplicate directive root");
+    if (root.find(' ') != std::string::npos)
+        throw std::runtime_error("Error in config file: invalid number of arguments in root");
+    _root = root;
+}
 
 void    Server::set_client_max_body_size(std::string client_max_body_size) {
     bool mb = false;
 
+    if (_client_max_body_size != -1)
+        throw std::runtime_error("Error in config file: duplicate directive client_max_body_size");
     if (client_max_body_size[client_max_body_size.size() - 1] == 'M' || client_max_body_size[client_max_body_size.size() - 1] == 'm')
         mb = true;
     for (size_t pos = 0; pos < client_max_body_size.size(); pos++) {
@@ -94,6 +84,10 @@ void    Server::set_client_max_body_size(std::string client_max_body_size) {
 }
 
 void    Server::set_autoindex(std::string autoindex) {
+    if (!_autoindex.empty())
+        throw std::runtime_error("Error in config file: duplicate directive autoindex");
+    if (autoindex.find(' ') != std::string::npos)
+        throw std::runtime_error("Error in config file: invalid number of arguments in autoindex");
     if (autoindex != "on" && autoindex != "off")
         throw std::runtime_error("Error in config file: invalid autoindex directive");
     _autoindex = autoindex;
@@ -103,12 +97,22 @@ void    Server::set_server_name(std::string server_name) {
     size_t pos = 0;
     while (pos < server_name.size()) {
         size_t space_pos = server_name.find(' ', pos);
-        if (space_pos != std::string::npos){
+        if (space_pos != std::string::npos) {
+            if (server_name.substr(pos, space_pos - pos).find('/') != std::string::npos ||
+                server_name.substr(pos, space_pos - pos).find('\\') != std::string::npos) {
+                Logger::log(LOG_WARNING, "server_name " + server_name.substr(pos, space_pos - pos) + " has suspicious symbols");
+                pos = space_pos + 1;
+                continue ;
+            }
             _server_name.push_back(server_name.substr(pos, space_pos - pos));
             pos = space_pos + 1;
         }
         else {
-            _server_name.push_back(server_name.substr(pos));
+            if (server_name.substr(pos).find('/') != std::string::npos || 
+                server_name.substr(pos).find('\\') != std::string::npos)
+                Logger::log(LOG_WARNING, "server_name " + server_name.substr(pos) + " has suspicious symbols");
+            else            
+                _server_name.push_back(server_name.substr(pos));
             break;
         }
     }
@@ -129,36 +133,36 @@ void    Server::set_index(std::string index) {
     }
 }
 
-//check if error code has only digits and if there are only one path
 void    Server::set_error_page(std::string error_page) {
-    size_t  pos_semicolon;
     size_t  pos_space;
-
-    pos_semicolon = error_page.find(';');
-    if (pos_semicolon == std::string::npos)
-        throw std::runtime_error("Error in config file: invalid error page");
-
+    
     pos_space = error_page.find(' ');
     if (pos_space == std::string::npos)
-        throw std::runtime_error("Error in config file: invalid error page");
-
+        throw std::runtime_error("Error in config file: invalid location error page");
+    
     std::string error_code_str = error_page.substr(0, pos_space);
     for (size_t i = 0; i < error_code_str.size(); i++) {
         if (!std::isdigit(error_code_str[i]))
-            throw std::runtime_error("Error in config file: invalid error page");
+            throw std::runtime_error("Error in config file: invalid location error page");
     }
     int error_code = atoi(error_code_str.c_str());
-    if (error_code < 400 || error_code > 599)
-        throw std::runtime_error("Error in config file: invalid error page");
+    if (error_code < 400 || error_code > 599) 
+        throw std::runtime_error("Error in config file: invalid location error page");         
 
-    std::string error_path = error_page.substr(pos_space + 1, pos_semicolon - pos_space - 1);
+    std::string error_path = error_page.substr(pos_space + 1);
     if (error_path.find(' ') != std::string::npos)
-        throw std::runtime_error("Error in config file: invalid error page");
-    _error_pages[error_code] = error_path;
+        throw std::runtime_error("Error in config file: invalid location error page");         
+    
+    std::map<int, std::string>::iterator it = _error_pages.find(error_code);
+    if (it != _error_pages.end())
+        it->second = error_path;
+    else
+        _error_pages[error_code] = error_path;
 }
 
-//check for methods GET POST DELETE
 void    Server::set_methods(std::string methods) {
+    if (!_methods.empty())
+        throw std::runtime_error("Error in config file: duplicate directive allow_methods");
     for (size_t pos = 0; pos < methods.size(); pos++) {
         size_t space_pos = methods.find(' ', pos);
         std::string method;
@@ -178,7 +182,7 @@ void    Server::set_methods(std::string methods) {
 }
 
 void    Server::set_location(Location &location) {
-    location.check_directives();
+    check_duplicate_location(location);
     _locations.push_back(location);
 }
 
@@ -196,47 +200,51 @@ void    Server::set_sock_fd() {
     hints.ai_flags = AI_PASSIVE;
     hints.ai_protocol = 0;
 
-    status = getaddrinfo(this->_host.c_str(), this->_port.c_str(), &hints, &result);
-    if (status != 0) {
-        Logger::log(LOG_ERROR, gai_strerror(status));
-        throw std::runtime_error("Error: getaddrinfo()");
-    }
-
-    for (rp = result; rp != NULL; rp = rp->ai_next) {
-        this->_sock_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-
-        if(this->_sock_fd == -1)
-            continue;
-
-        int option = 1;
-        if (setsockopt(this->_sock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1){
-            Logger::log(LOG_ERROR, "setsockopt() failure");
-            close(this->_sock_fd);
-            freeaddrinfo(result);
-            throw std::runtime_error("Error: setsockopt()");
+    for (size_t i = 0; i < _listeners.size(); i++) {
+        int sock_fd = -1;
+        status = getaddrinfo(_listeners[i].host.c_str(), _listeners[i].port.c_str(), &hints, &result);
+        if (status != 0) {
+            Logger::log(LOG_ERROR, gai_strerror(status));
+            throw std::runtime_error("Error: getaddrinfo()");
         }
 
-        if (bind(this->_sock_fd, rp->ai_addr, rp->ai_addrlen) == 0)
-            break ;
-    }
+        for (rp = result; rp != NULL; rp = rp->ai_next) {
+            sock_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 
-    if(rp == NULL){ //No address succeded
-        Logger::log(LOG_ERROR, "Could not bind");
+            if(sock_fd == -1)
+                continue;
+
+            int option = 1;
+            if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1){
+                Logger::log(LOG_ERROR, "setsockopt() failure");
+                close(sock_fd);
+                freeaddrinfo(result);
+                throw std::runtime_error("Error: setsockopt()");
+            }
+
+            if (bind(sock_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+                _sock_fd.push_back(sock_fd);
+                break ;
+            }
+        }
+
+        if(rp == NULL){ //No address succeded
+            Logger::log(LOG_ERROR, "Could not bind");
+            freeaddrinfo(result);
+            throw std::runtime_error("Error: bind()");
+        }
+
         freeaddrinfo(result);
-        throw std::runtime_error("Error: bind()");
     }
-
-    freeaddrinfo(result);
 }
 
 //getters
-std::string     Server::get_port() {return _port;}
 
-std::string     Server::get_host() {return _host;}
+std::vector<Listen>     Server::get_listeners() {return _listeners;}
 
 std::string     Server::get_root() {return _root;}
 
-unsigned long    Server::get_client_max_body_size() {return _client_max_body_size;}
+long    Server::get_client_max_body_size() {return _client_max_body_size;}
 
 std::string    Server::get_autoindex() {return _autoindex;}
 
@@ -249,7 +257,7 @@ std::map<int, std::string>  Server::get_error_pages() {return _error_pages;}
 std::string                 Server::get_error_page_path(int error_code) {
     std::map<int, std::string>::iterator it = _error_pages.find(error_code);
     if (it == _error_pages.end())
-        throw std::runtime_error("Error page not found: error code " + error_code);
+        return NULL;
     return it->second;
 }
 
@@ -257,14 +265,87 @@ std::vector<std::string>    Server::get_methods() {return _methods;}
 
 std::vector<Location>    Server::get_location() {return _locations;}
 
-int Server::get_sock_fd() const {return _sock_fd;}
+std::vector<int> Server::get_sock_fd() const {return _sock_fd;}
 
 //methods
 
+void    Server::check_duplicate_location(Location &location) {
+    for(size_t i = 0; i < _locations.size(); i++) {
+        if (location.get_path() == _locations[i].get_path())
+            throw std::runtime_error("Error in config file: duplicate location path");
+    }
+}
+
+void    Server::check_duplicate_listen(std::string host, std::string port) {
+    for(size_t i = 0; i < _listeners.size(); i++){
+        if (host == _listeners[i].host && port == _listeners[i].port)
+            throw std::runtime_error("Error in config file: duplicate listen: " + host + ":" + port);
+    }
+}
+
+void    Server::set_default_directives(){
+
+    if (_listeners.empty())
+        set_listeners("0.0.0.0:80");
+    if (_index.empty())
+        set_index("index.html");
+    if (_autoindex.empty())
+        set_autoindex("off");
+    if (_client_max_body_size == -1)
+        set_client_max_body_size("1m");
+    if (_methods.empty())
+        set_methods("GET POST DELETE");
+    if (_root.empty())
+        set_root("/");
+
+    for (size_t i = 0; i < _locations.size(); i++) {
+        
+        if (_locations[i].get_root().empty() && _locations[i].get_alias().empty())
+            _locations[i].set_root(_root);
+        if (_locations[i].get_autoindex().empty())
+            _locations[i].set_autoindex(_autoindex);
+        if (_locations[i].get_client_max_body_size() == -1) {
+            std::stringstream ss;
+            ss << _client_max_body_size;
+            _locations[i].set_client_max_body_size(ss.str());
+        }
+        if (_locations[i].get_index().empty()) {
+            std::string index;
+            for (size_t j = 0; j < _index.size(); j++) {
+                index += _index[j];
+                if (j < _index.size() - 1)
+                    index += " ";
+            }
+            _locations[i].set_index(index);
+        }
+        if (_locations[i].get_methods().empty()) {
+            std::string methods;
+            for (size_t j = 0; j < _methods.size(); j++) {
+                methods += _methods[j];
+                if (j < _methods.size() - 1)
+                    methods += " ";
+            }
+            _locations[i].set_methods(methods);
+        }
+        for (std::map<int, std::string>::iterator it = _error_pages.begin(); it != _error_pages.end(); it++) {
+            std::map<int, std::string> error_page_map = _locations[i].get_error_pages();
+            if (error_page_map.find(it->first) == error_page_map.end()) {
+                std::stringstream ss;
+                ss << it->first;
+                _locations[i].set_error_page(ss.str() + " " + it->second);
+            }
+        }
+    }
+}
+
 void    Server::print_all_directives() {
 
-    std::cout << "   port: " << _port << std::endl;
-    std::cout << "   host: " << _host << std::endl;
+    for(size_t i = 0; i < _listeners.size(); i++){
+        std::cout << "   listen: " << _listeners[i].host << ":" << _listeners[i].port << std::endl;
+    }
+    for(size_t i = 0; i < _sock_fd.size(); i++)
+        std::cout << "   sock_fd [ " << i  << " ] = " << _sock_fd[i] << std::endl;
+    
     std::cout << "   root: " << _root << std::endl;
     std::cout << "   client_max_body_size: " << _client_max_body_size << std::endl;
     std::cout << "   autoindex " << _autoindex << std::endl;
