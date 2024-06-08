@@ -226,6 +226,11 @@ void    Server::set_sock_fd() {
                 _sock_fd.push_back(sock_fd);
                 break ;
             }
+            else {
+                _sock_fd.push_back(-1);
+                Logger::log(LOG_ERROR, "Could not bind " + _listeners[i].host + ":" + _listeners[i].port);
+                break;
+            }
         }
 
         if(rp == NULL){ //No address succeded
@@ -234,7 +239,19 @@ void    Server::set_sock_fd() {
             throw std::runtime_error("Error: bind()");
         }
 
+
         freeaddrinfo(result);
+    }
+    bool bind = false;
+    for (size_t i = 0; i < _sock_fd.size(); i++) {
+        if (_sock_fd[i] != -1) {
+            bind = true;
+            break;
+        }
+    }
+    if (bind == false) {
+        Logger::log(LOG_ERROR, "Could not bind");
+        throw std::runtime_error("Error: bind()");
     }
 }
 
