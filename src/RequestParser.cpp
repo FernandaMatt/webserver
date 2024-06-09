@@ -30,7 +30,9 @@ httpRequest RequestParser::parseRequest(std::string request)
 		req.path = getPath(parsing_request);
 		req.version = getVersion(parsing_request);
 		req.headers = getHeaders(parsing_request);
-		// req.body = getBody(parsing_request);
+		req.body = getBody(parsing_request);
+		req.host = getHost(req.headers["Host"]);
+		req.port = getPort(req.headers["Host"]);
 	} catch (std::exception &e) {
 		if (std::string(e.what()) == "Bad request")
 			req.statusCode = "400";
@@ -100,7 +102,7 @@ std::map<std::string, std::string> RequestParser::getHeaders(std::string &parsin
 	size_t pos = parsing_request.find("\r\n\r\n");
 	if (pos == std::string::npos)
 		throw std::invalid_argument("Bad request");
-	strHeader = parsing_request.substr(0, pos);
+	strHeader = parsing_request.substr(0, pos + 2);
 	parsing_request = parsing_request.substr(pos+4);
 
 	std::string	line;
@@ -109,6 +111,8 @@ std::map<std::string, std::string> RequestParser::getHeaders(std::string &parsin
 	while(!strHeader.empty())
 	{
 		line_end = strHeader.find("\r\n");
+		if (line_end == std::string::npos)
+			throw std::invalid_argument("Bad request");
 		line = strHeader.substr(0, line_end);
 		strHeader = strHeader.substr(line_end + 2);
 		pos_colon = line.find(": ");
@@ -117,6 +121,34 @@ std::map<std::string, std::string> RequestParser::getHeaders(std::string &parsin
 		mapHeaders[line.substr(0, pos_colon)] = line.substr(pos_colon + 2);
 	}
 	return mapHeaders;
+}
+
+std::string RequestParser::getHost(std::string hostPort)
+{
+	size_t pos = hostPort.find(":");
+	if (pos == std::string::npos)
+		throw std::invalid_argument("Bad request");
+	return hostPort.substr(0, pos);
+}
+
+std::string RequestParser::getPort(std::string hostPort)
+{
+	size_t pos = hostPort.find(":");
+	return hostPort.substr(pos + 1);
+}
+
+std::string RequestParser::getBody(std::string &parsing_request)
+{
+	std::string body;
+
+	if(parsing_request.empty()){
+		return "";
+	}
+	if (parsing_request.substr(parsing_request.size() - 2) != std::string("\r\n")) //TEST: é necessário a request terminar com \r\n, e realmente só um é desconsiderado ? Testar com nginx e insomnia
+		throw std::invalid_argument("Bad request");
+	body = parsing_request.substr(0, parsing_request.size() - 2);
+	parsing_request.clear();
+	return body;
 }
 
 httpMethod RequestParser::stringToHttpMethod(const std::string& method) {

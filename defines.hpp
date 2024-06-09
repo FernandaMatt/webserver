@@ -46,7 +46,9 @@ typedef struct httpRequest
 		std::cout << BLUE << "Headers: " << RST << std::endl;
 		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
 			std::cout << "\t" << it->first << ": " << it->second << std::endl;
-		// std::cout << BLUE << "Body: " << RST << body << std::endl;
+		std::cout << BLUE << "Host: " << RST << host << std::endl;
+		std::cout << BLUE << "Port: " << RST << port << std::endl;
+		std::cout << BLUE << "Body: " << RST << body << std::endl;
 		std::cout << BLUE << "Status Code: " << RST << statusCode << std::endl;
 	}
 }				httpRequest;
