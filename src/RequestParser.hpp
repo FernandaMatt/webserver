@@ -19,11 +19,11 @@ class RequestParser
 		httpRequest parseRequest(std::string request);
 
 	private:
-		httpMethod							getMethod(std::string request);
-		std::string 						getPath(std::string request);
-		std::string 						getVersion(std::string request);
-		std::map<std::string, std::string>	getHeaders(std::string request);
-		std::string							getBody(std::string request);
+		httpMethod							getMethod(std::string &parsing_request);
+		std::string 						getPath(std::string &parsing_request);
+		std::string 						getVersion(std::string &parsing_request);
+		std::map<std::string, std::string>	getHeaders(std::string &parsing_request);
+		std::string							getBody(std::string &parsing_request);
 		httpMethod							stringToHttpMethod(const std::string& method);
 		std::string							httpMethodToString(const httpMethod &method);
 };

@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 	try{
 		RequestParser reqParser;
 
-		httpRequest req = reqParser.parseRequest("DELETE / HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/7.68.0\r\nAccept: */*\r\n\r\n");
+		httpRequest req = reqParser.parseRequest("DELETE /home HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/7.68.0\r\nAccept: */*\r\n\r\n");
 		req.printRequest();
 	}
 	catch (std::exception &e) {

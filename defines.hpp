@@ -33,19 +33,21 @@ typedef struct httpRequest
 	std::string path;
 	std::string version;
 	std::map<std::string, std::string> headers;
+	std::string host;
+	std::string port;
 	std::string body;
 	std::string statusCode;
 
 	void printRequest()
 	{
 		std::cout << BLUE << "Method: " << RST << method << std::endl;
-		// std::cout << BLUE << "Path: " << RST << path << std::endl;
-		// std::cout << BLUE << "Version: " << RST << version << std::endl;
-		// std::cout << BLUE << "Headers: " << RST << std::endl;
-		// for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
-		// 	std::cout << "\t" << it->first << ": " << it->second << std::endl;
+		std::cout << BLUE << "Path: " << RST << path << std::endl;
+		std::cout << BLUE << "Version: " << RST << version << std::endl;
+		std::cout << BLUE << "Headers: " << RST << std::endl;
+		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)
+			std::cout << "\t" << it->first << ": " << it->second << std::endl;
 		// std::cout << BLUE << "Body: " << RST << body << std::endl;
-		// std::cout << BLUE << "Status Code: " << RST << statusCode << std::endl;
+		std::cout << BLUE << "Status Code: " << RST << statusCode << std::endl;
 	}
 }				httpRequest;
 
