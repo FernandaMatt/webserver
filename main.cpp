@@ -1,5 +1,5 @@
 #include "Parser.hpp"
-#include "WebServer.hpp"
+// #include "WebServer.hpp"
 
 int main(int argc, char **argv) {
 	if (argc != 2 ){
@@ -10,18 +10,19 @@ int main(int argc, char **argv) {
 
 	std::string config_file = argv[1];
 	Parser		*parser = NULL;
-	WebServer	*webServer = NULL;
+	// WebServer	*webServer = NULL;
 
 	try {
 		parser = new Parser(config_file);
 		Logger::log(LOG_INFO, "parse of configuration file completed");
-		webServer= new WebServer(parser->get_servers());
-		webServer->run();
+		parser->print_servers_directives();
+		// webServer= new WebServer(parser->get_servers());
+		// webServer->run();
 	}
 	catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 	}
 	delete parser;
-	delete webServer;
+	// delete webServer;
 	return 0;
 }

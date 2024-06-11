@@ -11,7 +11,7 @@ Server::~Server() {
 void    Server::set_listeners(std::string listen) {
     Listen listener;
     size_t colon_pos = listen.find_last_of(':');
-    
+
     if (colon_pos != std::string::npos) {
         std::string host = listen.substr(0, colon_pos);
         std::string port = listen.substr(colon_pos + 1);
@@ -108,10 +108,10 @@ void    Server::set_server_name(std::string server_name) {
             pos = space_pos + 1;
         }
         else {
-            if (server_name.substr(pos).find('/') != std::string::npos || 
+            if (server_name.substr(pos).find('/') != std::string::npos ||
                 server_name.substr(pos).find('\\') != std::string::npos)
                 Logger::log(LOG_WARNING, "server_name " + server_name.substr(pos) + " has suspicious symbols");
-            else            
+            else
                 _server_name.push_back(server_name.substr(pos));
             break;
         }
@@ -135,24 +135,24 @@ void    Server::set_index(std::string index) {
 
 void    Server::set_error_page(std::string error_page) {
     size_t  pos_space;
-    
+
     pos_space = error_page.find(' ');
     if (pos_space == std::string::npos)
         throw std::runtime_error("Error in config file: invalid location error page");
-    
+
     std::string error_code_str = error_page.substr(0, pos_space);
     for (size_t i = 0; i < error_code_str.size(); i++) {
         if (!std::isdigit(error_code_str[i]))
             throw std::runtime_error("Error in config file: invalid location error page");
     }
     int error_code = atoi(error_code_str.c_str());
-    if (error_code < 400 || error_code > 599) 
-        throw std::runtime_error("Error in config file: invalid location error page");         
+    if (error_code < 400 || error_code > 599)
+        throw std::runtime_error("Error in config file: invalid location error page");
 
     std::string error_path = error_page.substr(pos_space + 1);
     if (error_path.find(' ') != std::string::npos)
-        throw std::runtime_error("Error in config file: invalid location error page");         
-    
+        throw std::runtime_error("Error in config file: invalid location error page");
+
     std::map<int, std::string>::iterator it = _error_pages.find(error_code);
     if (it != _error_pages.end())
         it->second = error_path;
@@ -187,21 +187,19 @@ void    Server::set_location(Location &location) {
 }
 
 void    Server::set_sock_fd() {
-
-    struct addrinfo hints;
-    struct addrinfo *result;
-    struct addrinfo *rp;
-    int             status;
-    int yes = 1;
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    hints.ai_protocol = 0;
-
     for (size_t i = 0; i < _listeners.size(); i++) {
+        struct addrinfo hints;
+        struct addrinfo *result;
+        struct addrinfo *rp;
+        int             status;
+
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_PASSIVE;
+        hints.ai_protocol = 0;
         int sock_fd = -1;
+
         status = getaddrinfo(_listeners[i].host.c_str(), _listeners[i].port.c_str(), &hints, &result);
         if (status != 0) {
             Logger::log(LOG_ERROR, gai_strerror(status));
@@ -226,32 +224,16 @@ void    Server::set_sock_fd() {
                 _sock_fd.push_back(sock_fd);
                 break ;
             }
-            else {
-                _sock_fd.push_back(-1);
-                Logger::log(LOG_ERROR, "Could not bind " + _listeners[i].host + ":" + _listeners[i].port);
-                break;
-            }
         }
 
         if(rp == NULL){ //No address succeded
-            Logger::log(LOG_ERROR, "Could not bind");
-            freeaddrinfo(result);
-            throw std::runtime_error("Error: bind()");
+            if(sock_fd != -1)
+                close(sock_fd);
+            _sock_fd.push_back(-1);
+            Logger::log(LOG_ERROR, "Could not bind " + _listeners[i].host + ":" + _listeners[i].port);
         }
-
 
         freeaddrinfo(result);
-    }
-    bool bind = false;
-    for (size_t i = 0; i < _sock_fd.size(); i++) {
-        if (_sock_fd[i] != -1) {
-            bind = true;
-            break;
-        }
-    }
-    if (bind == false) {
-        Logger::log(LOG_ERROR, "Could not bind");
-        throw std::runtime_error("Error: bind()");
     }
 }
 
@@ -316,7 +298,7 @@ void    Server::set_default_directives(){
         set_root("/");
 
     for (size_t i = 0; i < _locations.size(); i++) {
-        
+
         if (_locations[i].get_root().empty() && _locations[i].get_alias().empty())
             _locations[i].set_root(_root);
         if (_locations[i].get_autoindex().empty())
@@ -362,7 +344,7 @@ void    Server::print_all_directives() {
     }
     for(size_t i = 0; i < _sock_fd.size(); i++)
         std::cout << "   sock_fd [ " << i  << " ] = " << _sock_fd[i] << std::endl;
-    
+
     std::cout << "   root: " << _root << std::endl;
     std::cout << "   client_max_body_size: " << _client_max_body_size << std::endl;
     std::cout << "   autoindex " << _autoindex << std::endl;
