@@ -1,36 +1,36 @@
-// #ifndef WEBSERVER_HPP
-// # define WEBSERVER_HPP
+#ifndef WEBSERVER_HPP
+# define WEBSERVER_HPP
 
-// # include <sys/epoll.h>
-// # include <sys/socket.h>
-// # include <fcntl.h>
+# include <sys/epoll.h>
+# include <sys/socket.h>
+# include <fcntl.h>
 
-// # include "Logger.hpp"
-// # include "Server.hpp"
-// # include "defines.hpp"
+# include "Logger.hpp"
+# include "Server.hpp"
+# include "defines.hpp"
 
-// class Server;
-// class Logger;
+class Server;
+class Logger;
 
-// class WebServer {
-// 	private:
-// 		std::vector<Server>	_servers;
-// 		int					_epollFD;
+class WebServer {
+	private:
+		std::vector<Server>	_servers;
+		int					_epollFD;
 
-// 		WebServer();
+		WebServer();
 
-// 		void	nonBlocking(const int &fd);
-// 		void	addToEpollServers( );
-// 		void	addToEpoll(const int &fd);
-// 		void	handleConnections( );
-// 		int		isServerFDCheck(const int &i) const;
+		void	nonBlocking(const int &fd);
+		void	addToEpollServers( );
+		void	addToEpoll(const int &fd);
+		void	handleConnections( );
+		int		isServerFDCheck(const int &i) const;
 
-// 	public:
-// 		WebServer(const std::vector<Server> &parsedServers);
-// 		~WebServer();
+	public:
+		WebServer(const std::vector<Server> &parsedServers);
+		~WebServer();
 
-// 		void run();
+		void run();
 
-// };
+};
 
-// #endif
+#endif
