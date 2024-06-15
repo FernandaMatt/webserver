@@ -5,7 +5,7 @@ Location::Location() {
 }
 
 Location::~Location() {
-    
+
 }
 
 //setters
@@ -16,7 +16,7 @@ void    Location::set_path(std::string path) {
 
 void    Location::set_root(std::string root) {
     if (!_alias.empty())
-        throw std::runtime_error("Error in config file: invalid location root directive (alias is already setted)");    
+        throw std::runtime_error("Error in config file: invalid location root directive (alias is already setted)");
     if (!_root.empty())
         throw std::runtime_error("Error in config file: duplicate directive root");
     if (root.find(' ') != std::string::npos)
@@ -43,19 +43,19 @@ void    Location::set_autoindex(std::string autoindex) {
     if (!_autoindex.empty())
         throw std::runtime_error("Error in config file: duplicate directive autoindex");
     if (autoindex.find(' ') != std::string::npos)
-        throw std::runtime_error("Error in config file: invalid number of arguments in autoindex");    
-    if (autoindex != "on" && autoindex != "off") 
+        throw std::runtime_error("Error in config file: invalid number of arguments in autoindex");
+    if (autoindex != "on" && autoindex != "off")
         throw std::runtime_error("Error in config file: invalid location autoindex " + autoindex);
     _autoindex = autoindex;
 }
 
 void    Location::set_alias(std::string alias) {
     if (!_root.empty())
-        throw std::runtime_error("Error in config file: invalid location alias directive (root is already setted)");    
+        throw std::runtime_error("Error in config file: invalid location alias directive (root is already setted)");
     if (!_alias.empty())
         throw std::runtime_error("Error in config file: duplicate directive alias");
     if (alias.find(' ') != std::string::npos)
-        throw std::runtime_error("Error in config file: invalid number of arguments in alias");    
+        throw std::runtime_error("Error in config file: invalid number of arguments in alias");
     _alias = alias;
 }
 
@@ -93,9 +93,9 @@ void    Location::set_methods(std::string methods) {
             method = methods.substr(pos);
             pos = methods.size();
         }
-        if (method != "GET" && method != "POST" && method != "DELETE" && 
+        if (method != "GET" && method != "POST" && method != "DELETE" &&
             method != "get" && method != "post" && method != "delete") {
-            throw std::runtime_error("Error in config file: invalid methods" + method); }        
+            throw std::runtime_error("Error in config file: invalid methods" + method); }
         _methods.push_back(method);
     }
 }
@@ -106,20 +106,20 @@ void    Location::set_error_page(std::string error_page) {
     pos_space = error_page.find(' ');
     if (pos_space == std::string::npos)
         throw std::runtime_error("Error in config file: invalid location error page arguments");
-    
+
     std::string error_code_str = error_page.substr(0, pos_space);
     for (size_t i = 0; i < error_code_str.size(); i++) {
         if (!std::isdigit(error_code_str[i]))
             throw std::runtime_error("Error in config file: invalid location error page");
     }
     int error_code = atoi(error_code_str.c_str());
-    if (error_code < 400 || error_code > 599) 
-        throw std::runtime_error("Error in config file: invalid location error page");         
+    if (error_code < 400 || error_code > 599)
+        throw std::runtime_error("Error in config file: invalid location error page");
 
     std::string error_path = error_page.substr(pos_space + 1);
     if (error_path.find(' ') != std::string::npos)
-        throw std::runtime_error("Error in config file: invalid location error page");         
-    
+        throw std::runtime_error("Error in config file: invalid location error page");
+
     std::map<int, std::string>::iterator it = _error_pages.find(error_code);
     if (it != _error_pages.end())
         it ->second = error_path;
@@ -172,27 +172,27 @@ std::string                 Location::get_cgi_path() {return _cgi_path;}
 std::string                 Location::get_cgi_ext() {return _cgi_ext;}
 
 void    Location::print_all_directives() {
-    
-    std::cout << "      path: " << _path << std::endl; 
-    std::cout << "      root: " << _root << std::endl; 
-    std::cout << "      alias: " << _alias << std::endl; 
+
+    std::cout << "      path: " << _path << std::endl;
+    std::cout << "      root: " << _root << std::endl;
+    std::cout << "      alias: " << _alias << std::endl;
     std::cout << "      client_max_body_size: " << _client_max_body_size << std::endl;
-    std::cout << "      autoindex " << _autoindex << std::endl; 
+    std::cout << "      autoindex " << _autoindex << std::endl;
     std::cout << "      index [ size = " << _index.size() << " ]: ";
     for (size_t i = 0; i < _index.size(); i++) {
-        std::cout << _index[i] << " "; 
+        std::cout << _index[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "      methods [ size = " << _methods.size() << " ]: ";
     for (size_t i = 0; i < _methods.size(); i++) {
-        std::cout << _methods[i] << " "; 
+        std::cout << _methods[i] << " ";
     }
     std::cout << std::endl;
     std::map<int, std::string>::iterator it;
     for (it = _error_pages.begin(); it != _error_pages.end(); it++) {
         std::cout << "      error_page [ " << it->first << " ]: " << it->second << std::endl;
     }
-    std::cout << "      cgi_path: " << _cgi_path << std::endl; 
-    std::cout << "      cgi_ext: " << _cgi_ext << std::endl; 
+    std::cout << "      cgi_path: " << _cgi_path << std::endl;
+    std::cout << "      cgi_ext: " << _cgi_ext << std::endl;
     std::cout << std::endl;
 }

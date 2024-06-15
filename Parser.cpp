@@ -147,7 +147,7 @@ void    Parser::set_server_directives(std::string &key, std::string &value, Serv
         server.set_error_page(value);
     else if (key == "allow_methods")
         server.set_methods(value);
-    
+
     key.clear();
     value.clear();
 }
@@ -176,7 +176,7 @@ void    Parser::set_location_directives(std::string &key, std::string &value, Lo
         location.set_cgi_path(value);
     else if (key == "cgi_ext")
         location.set_cgi_ext(value);
-    
+
     key.clear();
     value.clear();
 }
@@ -229,7 +229,7 @@ void    Parser::parse_directives(std::string const &server_block) {
         else
             throw std::runtime_error("Error in config file: " + line);
     }
-    
+
     server.set_default_directives();
     server.set_sock_fd();
     _servers.push_back(server);
@@ -267,13 +267,19 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
             location.set_path(path);
         }
         else if (key == "root" || key == "alias" || key == "index" || key == "autoindex" ||
-                    key == "allow_methods" || key == "client_max_body_size" || 
+                    key == "allow_methods" || key == "client_max_body_size" ||
                     key == "error_page" || key == "cgi_path" || key == "cgi_ext")
             set_location_directives(key, value, location);
         //invalid directive or other error
         else
             throw std::runtime_error("Error in config file: " + line);
     }
-    
+
     return location;
+}
+
+void    Parser::print_servers_directives()
+{
+    for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it)
+		it->print_all_directives();
 }

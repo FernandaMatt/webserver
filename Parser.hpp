@@ -16,11 +16,12 @@ class Parser {
     public:
         Parser(std::string const &config_file);
         ~Parser();
-        
+
         //getters
         size_t              get_nbr_servers();
         std::vector<Server> get_servers();
-        
+        void                print_servers_directives();
+
     private:
         std::string const           _file;
         std::string                 _content;
