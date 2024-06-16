@@ -1,4 +1,6 @@
 #include "Parser.hpp"
+#include "src/RequestParser.hpp"
+#include "defines.hpp"
 #include "WebServer.hpp"
 
 int main(int argc, char **argv) {
@@ -22,7 +24,17 @@ int main(int argc, char **argv) {
 	catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 	}
-	delete parser;
+// 	try{
+// 		RequestParser reqParser;
+
+// 		httpRequest req = reqParser.parseRequest("DELETE /home HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/7.68.0\r\nAccept: */*\r\n\r\n");
+// 		req.printRequest();
+// 	}
+// 	catch (std::exception &e) {
+// 		std::cerr << e.what() << std::endl;
+// 	}
+  
+// 	delete parser;
 	delete webServer;
 	return 0;
 }
