@@ -40,7 +40,7 @@ class Server {
         void    set_sock_fd(); //create and bind
 
         //getters
-        std::vector<Listen>         get_listeners();
+        const std::vector<Listen>&  get_listeners() const;
         std::string                 get_root();
         long                        get_client_max_body_size(); //in bytes
         std::string                 get_autoindex();
@@ -50,7 +50,7 @@ class Server {
         std::string                 get_error_page_path(int error_code);
         std::vector<std::string>    get_methods();
         std::vector<Location>       get_location();
-        std::vector<int>            get_sock_fd() const;
+        const std::vector<int>&     get_sock_fd() const;
 
         void    check_port(std::string port);
         void    check_host(std::string host);

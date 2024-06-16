@@ -239,7 +239,7 @@ void    Server::set_sock_fd() {
 
 //getters
 
-std::vector<Listen>     Server::get_listeners() {return _listeners;}
+const std::vector<Listen>&     Server::get_listeners() const {return _listeners;}
 
 std::string     Server::get_root() {return _root;}
 
@@ -264,7 +264,7 @@ std::vector<std::string>    Server::get_methods() {return _methods;}
 
 std::vector<Location>    Server::get_location() {return _locations;}
 
-std::vector<int> Server::get_sock_fd() const {return _sock_fd;}
+const std::vector<int>& Server::get_sock_fd() const {return _sock_fd;}
 
 //methods
 
