@@ -1,5 +1,5 @@
-#ifndef SERVERCONFIG_HPP
-# define SERVERCONFIG_HPP
+#ifndef SERVER_HPP
+# define SERVER_HPP
 # include "Logger.hpp"
 # include "Location.hpp"
 # include <string>
@@ -13,19 +13,22 @@
 # include <stdexcept>
 # include <cstring>
 # include <errno.h>
+# include <sstream>
 
 class Location;
 class Listener;
 
+struct Listen {
+    std::string host;
+    std::string port;
+};
 class Server {
     public:
         Server();
         ~Server();
-        
+
         //setters
-        void    set_listen(std::string listen);
-        void    set_port(std::string port);
-        void    set_host(std::string host);
+        void    set_listeners(std::string listen);
         void    set_root(std::string root);
         void    set_client_max_body_size(std::string client_max_body_size);
         void    set_autoindex(std::string autoindex);
@@ -34,13 +37,12 @@ class Server {
         void    set_error_page(std::string error_page);
         void    set_methods(std::string methods);
         void    set_location(Location &location);
-        void    set_listener();
+        void    set_sock_fd(); //create and bind
 
         //getters
-        std::string                 get_port();
-        std::string                 get_host();
+        const std::vector<Listen>&  get_listeners() const;
         std::string                 get_root();
-        unsigned long               get_client_max_body_size(); //in bytes
+        long                        get_client_max_body_size(); //in bytes
         std::string                 get_autoindex();
         std::vector<std::string>    get_server_name();
         std::vector<std::string>    get_index();
@@ -48,29 +50,28 @@ class Server {
         std::string                 get_error_page_path(int error_code);
         std::vector<std::string>    get_methods();
         std::vector<Location>       get_location();
-        int                         get_sock_fd();
+        const std::vector<int>&     get_sock_fd() const;
 
-        //void    init_error_pages();
-        bool    listen(void) const;
+        void    check_port(std::string port);
+        void    check_host(std::string host);
+        void    check_duplicate_location(Location &location);
+        void    check_duplicate_listen(std::string host, std::string port);
+
+        void    set_default_directives();
         void    print_all_directives();
 
     private:
-        std::string                 _port;
-        std::string                 _host;
+        std::vector<Listen>         _listeners;
         std::string                 _root;
-        unsigned long               _client_max_body_size;
+        long                        _client_max_body_size;
         std::string                 _autoindex;
         std::vector<std::string>    _server_name;
         std::vector<std::string>    _index;
         std::map<int, std::string>  _error_pages;
         std::vector<std::string>    _methods;
         std::vector<Location>       _locations;
-        
-        int                         _sock_fd;
-        struct sockaddr_storage     _addr_info;
-};
 
-//set default error pages
-//
+        std::vector<int>            _sock_fd;
+};
 
 #endif

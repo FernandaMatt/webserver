@@ -76,7 +76,7 @@ void Parser::reformat_config(std::string &content) {
     content.clear();
     // format the file to be read
     for (size_t i = 0; i < aux.size(); i++) {
-        if (aux[i] == ';') 
+        if (aux[i] == ';')
             content += ";\n";
         else if (aux[i] == '{' || aux[i] == '}'){
             content += aux[i];
@@ -109,7 +109,7 @@ void    Parser::split_servers(std::string const &content) {
             brace++;
 
             while (pos < content.length() && std::isspace(content[pos])) pos++;
-            //find the end of the server and count braces 
+            //find the end of the server and count braces
             while (pos < content.length() && brace > 0) {
                 if (content[pos] == '{') brace++;
                 else if (content[pos] == '}') brace--;
@@ -120,22 +120,63 @@ void    Parser::split_servers(std::string const &content) {
             end = pos - 1;
              _server_block.push_back(content.substr(start, end - start + 1));
             continue;
-        } else 
+        } else
             throw std::runtime_error("Error in config file: invalid directive");
     }
 }
 
-//check duplicate directives, remove semicolon in the end of the line and set map directive 
-void    Parser::set_directive(std::string &key, std::string &value, std::map<std::string, std::string>&directives) {
-    if (directives.find(key) != directives.end() && key != "error_page")
-        throw std::runtime_error("Error in config file: duplicate directive " + key);
-
+void    Parser::set_server_directives(std::string &key, std::string &value, Server &server) {
     size_t pos_semicolon = value.find(';');
     if (pos_semicolon == std::string::npos)
         throw std::runtime_error("Error in config file: semicolon missing");
-
     value.erase(pos_semicolon);
-    directives[key] = value;
+
+    if (key == "listen")
+        server.set_listeners(value);
+    else if (key == "root")
+        server.set_root(value);
+    else if (key == "client_max_body_size")
+        server.set_client_max_body_size(value);
+    else if (key == "server_name")
+        server.set_server_name(value);
+    else if (key == "index")
+        server.set_index(value);
+    else if (key == "autoindex")
+        server.set_autoindex(value);
+    else if (key == "error_page")
+        server.set_error_page(value);
+    else if (key == "allow_methods")
+        server.set_methods(value);
+
+    key.clear();
+    value.clear();
+}
+
+void    Parser::set_location_directives(std::string &key, std::string &value, Location &location) {
+    size_t pos_semicolon = value.find(';');
+    if (pos_semicolon == std::string::npos)
+        throw std::runtime_error("Error in config file: semicolon missing");
+    value.erase(pos_semicolon);
+
+    if (key == "root")
+        location.set_root(value);
+    else if (key == "alias")
+        location.set_alias(value);
+    else if (key == "client_max_body_size")
+        location.set_client_max_body_size(value);
+    else if (key == "index")
+        location.set_index(value);
+    else if (key == "autoindex")
+        location.set_autoindex(value);
+    else if (key == "error_page")
+        location.set_error_page(value);
+    else if (key == "allow_methods")
+        location.set_methods(value);
+    else if (key == "cgi_path")
+        location.set_cgi_path(value);
+    else if (key == "cgi_ext")
+        location.set_cgi_ext(value);
+
     key.clear();
     value.clear();
 }
@@ -145,8 +186,6 @@ void    Parser::parse_directives(std::string const &server_block) {
     Server  server;
     std::stringstream ss(server_block);
     std::string line;
-    std::string error_pages;
-    std::map<std::string, std::string> directives;
     bool    in_server = false;
 
     while (std::getline(ss, line)) {
@@ -160,15 +199,15 @@ void    Parser::parse_directives(std::string const &server_block) {
         else if (line.compare(0, 8, "server {") == 0 && in_server)
             throw std::runtime_error("Error in config file: invalid directive inside a server scope");
         else if (line[0] == '}') break;
-        
+
         //split key and value for set_directives
         size_t pos_space = line.find(' ');
         if (pos_space == std::string::npos)
             throw std::runtime_error("Error in config file: " + line);
-        
+
         std::string key = line.substr(0, pos_space);
         std::string value = line.substr(pos_space + 1);
-        
+
         //check and set valid directives
         if (key == "location"){
             Location location;
@@ -182,58 +221,38 @@ void    Parser::parse_directives(std::string const &server_block) {
             location_block.clear();
             continue;
         }
-        else if (key == "error_page") {
-            server.set_error_page(value);
-            continue;
-        }
-        else if (key == "listen" || key == "server_name" || key == "index" || key == "autoindex" ||
-                    key == "root" || key == "allow_methods" || key == "client_max_body_size")
-            set_directive(key, value, directives);
-        //invalid directive or other error 
+        else if (key == "listen" || key == "server_name" || key == "index" ||
+                    key == "autoindex" || key == "root" || key == "allow_methods" ||
+                    key == "client_max_body_size" || key == "error_page")
+            set_server_directives(key, value, server);
+        //invalid directive or other error
         else
             throw std::runtime_error("Error in config file: " + line);
     }
-    //check missing required directives
-    if (directives.find("listen") == directives.end() || directives.find("server_name") == directives.end())
-        throw std::runtime_error("Error in config file: missing required directives");
 
-    //set all directives with server methods
-    server.set_listen(directives["listen"]);
-    server.set_server_name(directives["server_name"]);
-    if (directives.find("index") != directives.end())
-        server.set_index(directives["index"]);
-    else server.set_index("index.html");
-    if (directives.find("autoindex") != directives.end()) server.set_autoindex(directives["autoindex"]);
-    if (directives.find("root") != directives.end()) server.set_root(directives["root"]);
-    else server.set_root("/");
-    if (directives.find("allow_methods") != directives.end()) server.set_methods(directives["allow_methods"]);
-    else server.set_methods("GET POST");
-    if (directives.find("client_max_body_size") != directives.end()) server.set_client_max_body_size(directives["client_max_body_size"]);
-    
-    server.set_listener();
+    server.set_default_directives();
+    server.set_sock_fd();
     _servers.push_back(server);
 }
 
 Location    &Parser::parse_location(std::string &location_str, Location &location) {
     std::stringstream ss(location_str);
     std::string line;
-    std::string error_pages;
-    std::map<std::string, std::string> directives;
     bool    in_path = true;
-    
+
     while (std::getline(ss, line)) {
         if (line.empty())
-            continue;        
+            continue;
         else if (line[0] == '}') break;
-        
+
         //split key and value for set_directives
         size_t pos_space = line.find(' ');
         if (pos_space == std::string::npos)
             throw std::runtime_error("Error in location config file: " + line);
-        
+
         std::string key = line.substr(0, pos_space);
         std::string value = line.substr(pos_space + 1);
-        
+
         //set path location
         if (in_path == true && key == "location") {
             in_path == false;
@@ -241,32 +260,26 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
             pos_space = value.find(' ');
             if (pos_space == std::string::npos)
                 throw std::runtime_error("Error in location config file: Invalid number of arguments in location directive" + line);
-            key = "path";
             std::string path = value.substr(0, pos_space);
             std::string after_path = value.substr(pos_space + 1);
             if (after_path != "{")
                 throw std::runtime_error("Error in location config file: " + line);
             location.set_path(path);
         }
-        else if (key == "error_page") {
-            location.set_error_page(value);
-            continue;
-        }
         else if (key == "root" || key == "alias" || key == "index" || key == "autoindex" ||
-                    key == "allow_methods" || key == "client_max_body_size")
-            set_directive(key, value, directives);
-        //invalid directive or other error 
+                    key == "allow_methods" || key == "client_max_body_size" ||
+                    key == "error_page" || key == "cgi_path" || key == "cgi_ext")
+            set_location_directives(key, value, location);
+        //invalid directive or other error
         else
             throw std::runtime_error("Error in config file: " + line);
     }
-    if (directives.find("root") != directives.end()) location.set_root(directives["root"]);
-    if (directives.find("alias") != directives.end()) location.set_alias(directives["alias"]);
-    if (directives.find("index") != directives.end()) location.set_index(directives["index"]);
-    else location.set_index("index.html");
-    if (directives.find("autoindex") != directives.end()) location.set_autoindex(directives["autoindex"]);
-    if (directives.find("allow_methods") != directives.end()) location.set_methods(directives["allow_methods"]);
-    else location.set_methods("GET POST");
-    if (directives.find("client_max_body_size") != directives.end()) location.set_client_max_body_size(directives["client_max_body_size"]);
-    
+
     return location;
+}
+
+void    Parser::print_servers_directives()
+{
+    for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it)
+		it->print_all_directives();
 }
