@@ -1,7 +1,8 @@
 NAME = webserv
 
 SRCS =	$(wildcard *.cpp) \
-		src/RequestParser.cpp
+		src/RequestParser.cpp \
+		src/ResponseBuilder.cpp
 
 CC = c++
 
