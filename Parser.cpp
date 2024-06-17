@@ -7,6 +7,7 @@ Parser::Parser(std::string const &configFile) : _file(configFile) {
     for (size_t i = 0; i < _server_block.size(); ++i) {
         parse_directives(_server_block[i]);
     }
+    check_duplicate_server_names();
 }
 
 Parser::~Parser() {}
@@ -276,6 +277,37 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
     }
 
     return location;
+}
+
+void        Parser::check_duplicate_server_names() {
+    for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
+        std::vector<std::string>& current_server_names = it->get_server_name();
+        for (std::vector<std::string>::iterator it_name = current_server_names.begin(); it_name != current_server_names.end(); it_name++) {
+            std::string current_name = *it_name;
+
+            for (std::vector<Server>::iterator next_it = it + 1; next_it != _servers.end(); next_it++) {
+                std::vector<std::string>& next_server_names = next_it->get_server_name();
+                std::vector<std::string>::iterator name_found = std::find(next_server_names.begin(), next_server_names.end(), current_name);
+                if (name_found != next_server_names.end()) {
+                    std::vector<Listen> it_listeners = it->get_listeners();
+                    std::vector<Listen> next_listeners = next_it->get_listeners();
+                    bool found = false;
+                    for (std::vector<Listen>::iterator it_listen = it_listeners.begin(); it_listen != it_listeners.end(); it_listen++) {
+                        for(std::vector<Listen>::iterator next_listen = next_listeners.begin(); next_listen != next_listeners.end(); next_listen++) {
+                            if (it_listen->host == next_listen->host && it_listen->port == next_listen->port) {
+                                if (found == false)
+                                    next_server_names.erase(name_found);
+                                found = true;
+                                Logger::log(LOG_WARNING, "conflicting server name " + current_name + " on " + it_listen->host + ":" + it_listen->port + ", ignored");
+                                break ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 void    Parser::print_servers_directives()

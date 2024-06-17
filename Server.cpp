@@ -241,28 +241,28 @@ void    Server::set_sock_fd() {
 
 const std::vector<Listen>&     Server::get_listeners() const {return _listeners;}
 
-std::string     Server::get_root() {return _root;}
+std::string&     Server::get_root() {return _root;}
 
 long    Server::get_client_max_body_size() {return _client_max_body_size;}
 
-std::string    Server::get_autoindex() {return _autoindex;}
+std::string&    Server::get_autoindex() {return _autoindex;}
 
-std::vector<std::string>     Server::get_server_name() {return _server_name;}
+std::vector<std::string>&     Server::get_server_name() {return _server_name;}
 
-std::vector<std::string>    Server::get_index() {return _index;}
+std::vector<std::string>&    Server::get_index() {return _index;}
 
-std::map<int, std::string>  Server::get_error_pages() {return _error_pages;}
+std::map<int, std::string>&  Server::get_error_pages() {return _error_pages;}
 
-std::string                 Server::get_error_page_path(int error_code) {
+std::string                  Server::get_error_page_path(int error_code) {
     std::map<int, std::string>::iterator it = _error_pages.find(error_code);
     if (it == _error_pages.end())
         return NULL;
     return it->second;
 }
 
-std::vector<std::string>    Server::get_methods() {return _methods;}
+std::vector<std::string>&    Server::get_methods() {return _methods;}
 
-std::vector<Location>    Server::get_location() {return _locations;}
+std::vector<Location>&    Server::get_location() {return _locations;}
 
 const std::vector<int>& Server::get_sock_fd() const {return _sock_fd;}
 

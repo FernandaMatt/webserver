@@ -41,15 +41,15 @@ class Server {
 
         //getters
         const std::vector<Listen>&  get_listeners() const;
-        std::string                 get_root();
+        std::string&                get_root();
         long                        get_client_max_body_size(); //in bytes
-        std::string                 get_autoindex();
-        std::vector<std::string>    get_server_name();
-        std::vector<std::string>    get_index();
-        std::map<int, std::string>  get_error_pages();
+        std::string&                get_autoindex();
+        std::vector<std::string>&   get_server_name();
+        std::vector<std::string>&   get_index();
+        std::map<int, std::string>& get_error_pages();
         std::string                 get_error_page_path(int error_code);
-        std::vector<std::string>    get_methods();
-        std::vector<Location>       get_location();
+        std::vector<std::string>&   get_methods();
+        std::vector<Location>&      get_location();
         const std::vector<int>&     get_sock_fd() const;
 
         void    check_port(std::string port);
