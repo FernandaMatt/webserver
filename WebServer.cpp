@@ -118,10 +118,10 @@ void WebServer::handleConnections() {
                         done = 1;
                         break ;
                     }
-                    ResponseBuilder responseb(events[i].data.fd, this->_servers, buf);
-                    responseb.buildResponse();
-                    std::string response = ERROR_404;
-                    write(events[i].data.fd, response.c_str(), response.length());
+                    ResponseBuilder response(events[i].data.fd, this->_servers, buf);
+                    response.buildResponse();
+                    std::string responseString = response.getResponse();
+                    write(events[i].data.fd, responseString.c_str(), responseString.length());
                 }
                 if (done)
                     close(events[i].data.fd);

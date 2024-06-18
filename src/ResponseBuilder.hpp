@@ -17,6 +17,8 @@ class ResponseBuilder {
 		void printInitializedAttributes();
         void buildResponse();
 
+        const std::string& getResponse() const;
+
         class NoLocationException : public std::exception {
             public:
                virtual const char* what() const throw() {
@@ -31,6 +33,13 @@ class ResponseBuilder {
                 }
         };
 
+        class BodySizeExceededException : public std::exception {
+            public:
+               virtual const char* what() const throw() {
+                    return "Body size exceeded";
+                }
+        };
+
 	private:
 		int _fd;
 		std::vector<Server> _candidateServers;
@@ -41,6 +50,11 @@ class ResponseBuilder {
         Location _location;
 
 		void delegateRequest();
-        bool isMethodAllowed();
+        bool isFile();
         void defineLocation();
+        void checkMethodAndBodySize();
+        void searchLocation();
+        bool isMethodAllowed(const std::string &method);
+        bool isBodySizeAllowed();
+        void defineErrorPage(int error_code);
 };

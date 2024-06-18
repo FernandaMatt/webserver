@@ -6,7 +6,8 @@ ResponseBuilder::ResponseBuilder() {
 ResponseBuilder::ResponseBuilder(int fd, std::vector<Server> servers, char *request) : 
 	_fd(fd), _candidateServers(servers), _request(request) {
 	RequestParser parser;
-	_parsedRequest = parser.parseRequest(request);
+	_parsedRequest = parser.parseRequest(request); //turn into static function and in the buildResponse function
+    _response = "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nDefault Response from Response Builder!";
 }
 
 ResponseBuilder::~ResponseBuilder() {
@@ -54,13 +55,31 @@ void ResponseBuilder::defineLocation() {
     for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
         if (_parsedRequest.path == it->get_path()) {
             _location = *it;
+            std::string body ="Location found!\n\n" + _server.get_root() + _location.get_path();
+            std::string contentLength = std::to_string(body.length());
+            _response = "HTTP/1.1 200 OK\r\nContent-Length:" + contentLength + "\r\n\r\n" + body;
             return;
         }
     }
     throw NoLocationException();
 }
 
-bool ResponseBuilder::isMethodAllowed() {
+bool ResponseBuilder::isMethodAllowed(const std::string &method) {
+
+    if (std::find(_location.get_methods().begin(), _location.get_methods().end(), method) == _location.get_methods().end()) {
+        return false;
+    }
+    return true;
+}
+
+bool ResponseBuilder::isBodySizeAllowed() {
+    if (_parsedRequest.body.length() > _location.get_client_max_body_size()) {
+        return false;
+    }
+    return true;
+}
+
+void ResponseBuilder::checkMethodAndBodySize() {
     std::string method ;
     if (_parsedRequest.method == GET) {
        method = "GET";
@@ -71,32 +90,50 @@ bool ResponseBuilder::isMethodAllowed() {
     else if (_parsedRequest.method == DELETE) {
         method = "DELETE";
     }
-    if (std::find(_server.get_methods().begin(), _server.get_methods().end(), method) == _server.get_methods().end()) {
-        return false;
+    if (!isMethodAllowed(method)) {
+        throw MethodNotAllowedException();
     }
-    return true;
+    if (method == "POST" && !isBodySizeAllowed()) {
+        throw BodySizeExceededException();
+    }
+}
+
+bool ResponseBuilder::isFile() {
+    //check if it is a file, if it is a file return the file
+    //need to check how the file is searched in this step, using server root ?
+    return false;
 }
 
 void ResponseBuilder::buildResponse() {
 
     try {
-        std::cout << ERROR_404 << std::endl;
         delegateRequest();
+        if (isFile())//check if it is a file, if it is a file return the file << NEXTP STEP
+            return;
         defineLocation();
-        if (!isMethodAllowed())
-            throw MethodNotAllowedException();
+        checkMethodAndBodySize();
+        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << STEP 2
     }
     catch (NoLocationException &e) {
-        _response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"; //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403
+        _response = ERROR_404; //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403
         return;
     }
     catch (MethodNotAllowedException &e) {
-        _response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n"; //create function to return right error page
+        _response = ERROR_405; //create function to return right error page defineErrorPage(int error_code)
+        return;
+    }
+    catch (BodySizeExceededException &e) {
+        _response = ERROR_413; //create function to return right error page
         return;
     }
     catch (std::exception &e){
+        _response = "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nEXCEPTION NOT CAUGHT IN BUILDING RESPONSE!";
         Logger::log(LOG_WARNING, "No caught exception");
         Logger::log(LOG_WARNING, e.what());
     }
 
+}
+
+const std::string& ResponseBuilder::getResponse() const {
+    return _response;
 }

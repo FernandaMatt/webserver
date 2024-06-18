@@ -19,7 +19,6 @@ enum httpMethod
 	DELETE
 };
 
-
 // STRUCTS
 
 # include <iostream>
@@ -53,7 +52,6 @@ typedef struct httpRequest
 	}
 }				httpRequest;
 
-
 #define MAX_EVENTS 10
 #define BUF_SIZE 1024
 
@@ -84,6 +82,62 @@ typedef struct httpRequest
 <body>\
     <h1>404</h1>\
     <p>Not Found</p>\
+    <p>by Fe, Iza e Mari</p>\
+</body>\
+</html>"
+
+#define ERROR_405 "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/html\r\nContent-Length:525 \r\n\r\n\
+<!DOCTYPE html>\
+<html lang='en'>\
+<head>\
+    <meta charset='UTF-8'>\
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\
+    <title>404 Method Not Allowed</title>\
+    <style>\
+        body {\
+            font-family: Arial, sans-serif;\
+            text-align: center;\
+            margin-top: 50px;\
+        }\
+        h1 {\
+            font-size: 100px;\
+        }\
+        p {\
+            font-size: 20px;\
+        }\
+    </style>\
+</head>\
+<body>\
+    <h1>404</h1>\
+    <p>Method Not Allowed</p>\
+    <p>by Fe, Iza e Mari</p>\
+</body>\
+</html>"
+
+#define ERROR_413 "HTTP/1.1 413 Request Entity Too Large\r\nContent-Type: text/html\r\nContent-Length:537 \r\n\r\n\
+<!DOCTYPE html>\
+<html lang='en'>\
+<head>\
+    <meta charset='UTF-8'>\
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\
+    <title>404 Request Entity Too Large</title>\
+    <style>\
+        body {\
+            font-family: Arial, sans-serif;\
+            text-align: center;\
+            margin-top: 50px;\
+        }\
+        h1 {\
+            font-size: 100px;\
+        }\
+        p {\
+            font-size: 20px;\
+        }\
+    </style>\
+</head>\
+<body>\
+    <h1>404</h1>\
+    <p>Request Entity Too Large</p>\
     <p>by Fe, Iza e Mari</p>\
 </body>\
 </html>"
