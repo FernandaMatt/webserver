@@ -6,7 +6,10 @@
 #include "../Server.hpp"
 #include "RequestParser.hpp"
 #include "../Logger.hpp"
-
+#include <sys/stat.h> 
+#include <fstream>
+#include <sstream>
+#include "Response.hpp"
 
 class ResponseBuilder {
 	public:
@@ -17,7 +20,7 @@ class ResponseBuilder {
 		void printInitializedAttributes();
         void buildResponse();
 
-        const std::string& getResponse() const;
+        const std::vector<char> getResponse() const;
 
         class NoLocationException : public std::exception {
             public:
@@ -45,16 +48,18 @@ class ResponseBuilder {
 		std::vector<Server> _candidateServers;
 		char *_request;
 		httpRequest _parsedRequest;
-		std::string _response;
+		Response _response;
 		Server _server;
         Location _location;
 
 		void delegateRequest();
-        bool isFile();
+        bool isFile(std::string path);
+        bool pathIsFile();
         void defineLocation();
         void checkMethodAndBodySize();
-        void searchLocation();
+        // void searchLocation();
         bool isMethodAllowed(const std::string &method);
         bool isBodySizeAllowed();
+        void loadResponseFromFile(std::string path); // Rewrite to use std::vector<char> and than load Response from any kind of file
         void defineErrorPage(int error_code);
 };

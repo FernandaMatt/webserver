@@ -120,8 +120,8 @@ void WebServer::handleConnections() {
                     }
                     ResponseBuilder response(events[i].data.fd, this->_servers, buf);
                     response.buildResponse();
-                    std::string responseString = response.getResponse();
-                    write(events[i].data.fd, responseString.c_str(), responseString.length());
+                    std::vector<char> responseString = response.getResponse();
+                    write(events[i].data.fd, responseString.data(), responseString.size());
                 }
                 if (done)
                     close(events[i].data.fd);

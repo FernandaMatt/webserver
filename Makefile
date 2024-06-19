@@ -2,7 +2,8 @@ NAME = webserv
 
 SRCS =	$(wildcard *.cpp) \
 		src/RequestParser.cpp \
-		src/ResponseBuilder.cpp
+		src/ResponseBuilder.cpp \
+		src/Response.cpp
 
 CC = c++
 
@@ -19,10 +20,10 @@ $(NAME): $(OBJS)
 	$(CC) $(FLAGS) $(OBJS) -o $(NAME)
 
 clean:
-	rm -rf *.o
+	rm -rf *.o src/*.o
 
 fclean:
-	rm -rf *.o $(NAME)
+	rm -rf *.o src/*.o $(NAME)
 
 re: fclean all
 
