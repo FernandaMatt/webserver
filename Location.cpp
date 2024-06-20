@@ -203,10 +203,12 @@ std::string Location::search_index_file(std::string path) {
     std::string file_name; //move manipulation of '/' to server_parser
 
     for (size_t i = 0; i < _index.size(); i++) {
-        if (_index[i][0] != '/')
-            index_path = path + "/" + _index[i];
-        else
-        index_path = path + _index[i];
+        file_name = _index[i];
+        if (file_name[0] == '/')
+            file_name = file_name.substr(1);
+        if (file_name[file_name.size() - 1] == '/')
+            file_name = file_name.substr(0, file_name.size() - 1);
+        index_path = path + file_name;
         if (stat(index_path.c_str(), &buffer) == 0)
             return index_path;
     }
