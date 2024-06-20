@@ -57,7 +57,7 @@ class ResponseBuilder {
         bool pathIsFile();
         void defineLocation();
         void checkMethodAndBodySize();
-        // void searchLocation();
+        void searchLocation();
         bool isMethodAllowed(const std::string &method);
         bool isBodySizeAllowed();
         void loadResponseFromFile(std::string path); // Rewrite to use std::vector<char> and than load Response from any kind of file

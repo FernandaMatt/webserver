@@ -196,3 +196,19 @@ void    Location::print_all_directives() {
     std::cout << "      cgi_ext: " << _cgi_ext << std::endl;
     std::cout << std::endl;
 }
+
+std::string Location::search_index_file(std::string path) {
+    struct stat buffer;
+    std::string index_path;
+    std::string file_name; //move manipulation of '/' to server_parser
+
+    for (size_t i = 0; i < _index.size(); i++) {
+        if (_index[i][0] != '/')
+            index_path = path + "/" + _index[i];
+        else
+        index_path = path + _index[i];
+        if (stat(index_path.c_str(), &buffer) == 0)
+            return index_path;
+    }
+    return "";
+}

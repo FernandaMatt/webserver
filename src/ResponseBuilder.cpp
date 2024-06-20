@@ -142,6 +142,33 @@ void ResponseBuilder::loadResponseFromFile(std::string path) {
     _response.loadFromFile(path);
 }
 
+void ResponseBuilder::searchLocation() {
+    std::string location_root;
+    std::string path;
+    location_root = _location.get_root();
+    if (server_root[server_root.length() - 1] != '/')
+        server_root += "/";
+    path = _parsedRequest.path;
+    if (path[0] == '/')
+        path = path.substr(1);
+    std::string file_path = server_root + path;
+    if (isFile(file_path)) {
+        loadResponseFromFile(file_path);
+        return;
+    }
+    if (isDirectory(file_path)) {
+        std::string index = _location.get_index();
+        if (index == "") {
+            throw NoLocationException();
+        }
+        file_path += "/" + index;
+        loadResponseFromFile(file_path);
+    }
+    else if (isFile(file_path)){
+        loadResponseFromFile(file_path);
+    }
+}
+
 void ResponseBuilder::buildResponse() {
 
     try {
@@ -151,7 +178,7 @@ void ResponseBuilder::buildResponse() {
             return;
         defineLocation(); //make it insensible to '/' at the end of the path
         checkMethodAndBodySize();
-        // searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << STEP 2
+        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << STEP 2
     }
     catch (NoLocationException &e) {
         _response.loadDefaultErrorPage(404); //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403
