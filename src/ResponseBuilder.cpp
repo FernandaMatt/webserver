@@ -54,12 +54,12 @@ void ResponseBuilder::defineLocation() {
     for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
         if (_parsedRequest.path == it->get_path()) {
             _location = *it;
-            std::string body ="Location found!\n\n" + _server.get_root() + _location.get_path();
-            std::string contentLength = std::to_string(body.length());
-            _response.setStatusMessage("HTTP/1.1 200 OK\r\n");
-            std::string headers = "Content-Length:" + contentLength + "\r\n\r\n";
-            _response.setHttpHeaders(headers.c_str());
-            _response.setResponseContent(body.c_str());
+            // std::string body ="Location found!\n\n" + _server.get_root() + _location.get_path();
+            // std::string contentLength = std::to_string(body.length());
+            // _response.setStatusMessage("HTTP/1.1 200 OK\r\n");
+            // std::string headers = "Content-Length:" + contentLength + "\r\n\r\n";
+            // _response.setHttpHeaders(headers.c_str());
+            // _response.setResponseContent(body.c_str());
             return;
         }
     }
@@ -142,31 +142,37 @@ void ResponseBuilder::loadResponseFromFile(std::string path) {
     _response.loadFromFile(path);
 }
 
-void ResponseBuilder::searchLocation() {
+void ResponseBuilder::searchRoot() {
     std::string location_root;
     std::string path;
     location_root = _location.get_root();
-    if (server_root[server_root.length() - 1] != '/')
-        server_root += "/";
+    if (location_root[location_root.length() - 1] != '/')
+        location_root += "/";
     path = _parsedRequest.path;
     if (path[0] == '/')
         path = path.substr(1);
-    std::string file_path = server_root + path;
-    if (isFile(file_path)) {
+    std::string file_path = location_root + path;
+    if (isFile(file_path)) { //check if the path comes with a file indicated -> !! Need to confirm if the file is returned or the error 403 (access not allowed)
         loadResponseFromFile(file_path);
         return;
     }
     if (isDirectory(file_path)) {
-        std::string index = _location.get_index();
-        if (index == "") {
+        
+        std::string index_file_path = _location.search_index_file(file_path);
+        if (index_file_path == "") {
             throw NoLocationException();
         }
-        file_path += "/" + index;
-        loadResponseFromFile(file_path);
+        file_path += "/" + index_file_path;
+        loadResponseFromFile(index_file_path);
     }
-    else if (isFile(file_path)){
-        loadResponseFromFile(file_path);
+}
+
+void ResponseBuilder::searchLocation() {
+    if (_location.get_root() == "") {
+        // searchAlias();
+        return;
     }
+    searchRoot();
 }
 
 void ResponseBuilder::buildResponse() {
@@ -174,11 +180,11 @@ void ResponseBuilder::buildResponse() {
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
         delegateRequest();
-        if (pathIsFile())//check if it is a file, if it is a file return the file << NEXTP STEP
+        if (pathIsFile())//check if it is a file, if it is a file return the file it checked in the root of the server first
             return;
         defineLocation(); //make it insensible to '/' at the end of the path
         checkMethodAndBodySize();
-        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << STEP 2
+        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << DOING
     }
     catch (NoLocationException &e) {
         _response.loadDefaultErrorPage(404); //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403

@@ -62,4 +62,6 @@ class ResponseBuilder {
         bool isBodySizeAllowed();
         void loadResponseFromFile(std::string path); // Rewrite to use std::vector<char> and than load Response from any kind of file
         void defineErrorPage(int error_code);
+        void searchRoot();
+        void searchAlias();
 };
