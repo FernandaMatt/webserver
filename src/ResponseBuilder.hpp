@@ -43,6 +43,13 @@ class ResponseBuilder {
                 }
         };
 
+        class InternalServerErrorException : public std::exception {
+            public:
+               virtual const char* what() const throw() {
+                    return "Internal server error";
+                }
+        };
+
 	private:
 		int _fd;
 		std::vector<Server> _candidateServers;

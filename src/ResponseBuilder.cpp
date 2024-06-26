@@ -142,6 +142,20 @@ void ResponseBuilder::loadResponseFromFile(std::string path) {
     _response.loadFromFile(path);
 }
 
+void ResponseBuilder::searchAlias() {
+    //search alias
+    std::string alias = _location.get_alias();
+    if (alias == "") {
+        Logger::log(LOG_WARNING, "No alias found in location.");
+        throw InternalServerErrorException();
+    }
+    std::string index_file_path = _location.search_index_file(alias);
+    if (index_file_path == "") {
+        throw NoLocationException();
+    }
+    loadResponseFromFile(index_file_path);
+}
+
 void ResponseBuilder::searchRoot() {
     std::string location_root;
     std::string path;
@@ -169,7 +183,7 @@ void ResponseBuilder::searchRoot() {
 
 void ResponseBuilder::searchLocation() {
     if (_location.get_root() == "") {
-        // searchAlias();
+        searchAlias();
         return;
     }
     searchRoot();
@@ -180,7 +194,7 @@ void ResponseBuilder::buildResponse() {
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
         delegateRequest();
-        if (pathIsFile())//check if it is a file, if it is a file return the file it checked in the root of the server first
+        if (pathIsFile())//check if it is a file, if it is a file return the file - checked in the root of the server first
             return;
         defineLocation(); //make it insensible to '/' at the end of the path
         checkMethodAndBodySize();
@@ -196,6 +210,10 @@ void ResponseBuilder::buildResponse() {
     }
     catch (BodySizeExceededException &e) {
         _response.loadDefaultErrorPage(413); //create function to return right error page
+        return;
+    }
+    catch (InternalServerErrorException &e) {
+        _response.loadDefaultErrorPage(500); //create function to return right error page
         return;
     }
     catch (std::exception &e){
