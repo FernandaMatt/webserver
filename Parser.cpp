@@ -7,6 +7,7 @@ Parser::Parser(std::string const &configFile) : _file(configFile) {
     for (size_t i = 0; i < _server_block.size(); ++i) {
         parse_directives(_server_block[i]);
     }
+    check_duplicate_server_names();
 }
 
 Parser::~Parser() {}
@@ -21,7 +22,7 @@ std::vector<Server> Parser::get_servers() {
 }
 
 //check file, passes the content to string and remove comments
-void Parser::parsing(std::string const &config_file) {
+void    Parser::parsing(std::string const &config_file) {
     std::ifstream file(config_file);
     std::string line;
 
@@ -41,7 +42,7 @@ void Parser::parsing(std::string const &config_file) {
 }
 
 //find '#' and delete the rest of the line
-void Parser::remove_comment(std::string &line) {
+void    Parser::remove_comment(std::string &line) {
     size_t comment = line.find('#');
     if (comment != std::string::npos) {
         line.erase(comment);
@@ -49,7 +50,7 @@ void Parser::remove_comment(std::string &line) {
 }
 
 //reformat the file
-void Parser::reformat_config(std::string &content) {
+void    Parser::reformat_config(std::string &content) {
     std::string aux;
     bool    was_space = false;
 
@@ -145,8 +146,6 @@ void    Parser::set_server_directives(std::string &key, std::string &value, Serv
         server.set_autoindex(value);
     else if (key == "error_page")
         server.set_error_page(value);
-    else if (key == "allow_methods")
-        server.set_methods(value);
 
     key.clear();
     value.clear();
@@ -172,6 +171,8 @@ void    Parser::set_location_directives(std::string &key, std::string &value, Lo
         location.set_error_page(value);
     else if (key == "allow_methods")
         location.set_methods(value);
+    else if (key == "upload_path")
+        location.set_upload_path(value);
     else if (key == "cgi_path")
         location.set_cgi_path(value);
     else if (key == "cgi_ext")
@@ -222,7 +223,7 @@ void    Parser::parse_directives(std::string const &server_block) {
             continue;
         }
         else if (key == "listen" || key == "server_name" || key == "index" ||
-                    key == "autoindex" || key == "root" || key == "allow_methods" ||
+                    key == "autoindex" || key == "root" ||
                     key == "client_max_body_size" || key == "error_page")
             set_server_directives(key, value, server);
         //invalid directive or other error
@@ -268,7 +269,7 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
         }
         else if (key == "root" || key == "alias" || key == "index" || key == "autoindex" ||
                     key == "allow_methods" || key == "client_max_body_size" ||
-                    key == "error_page" || key == "cgi_path" || key == "cgi_ext")
+                    key == "error_page" || key == "cgi_path" || key == "cgi_ext" || key == "upload_path")
             set_location_directives(key, value, location);
         //invalid directive or other error
         else
@@ -278,8 +279,36 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
     return location;
 }
 
-void    Parser::print_servers_directives()
-{
+void    Parser::check_duplicate_server_names() {
+    for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
+        std::vector<std::string>& current_server_names = it->get_server_name();
+        for (std::vector<std::string>::iterator it_name = current_server_names.begin(); it_name != current_server_names.end(); it_name++) {
+            std::string current_name = *it_name;
+            for (std::vector<Server>::iterator next_it = it + 1; next_it != _servers.end(); next_it++) {
+                std::vector<std::string>& next_server_names = next_it->get_server_name();
+                std::vector<std::string>::iterator name_found = std::find(next_server_names.begin(), next_server_names.end(), current_name);
+                if (name_found != next_server_names.end()) {
+                    std::vector<Listen> it_listeners = it->get_listeners();
+                    std::vector<Listen> next_listeners = next_it->get_listeners();
+                    bool found = false;
+                    for (std::vector<Listen>::iterator it_listen = it_listeners.begin(); it_listen != it_listeners.end(); it_listen++) {
+                        for(std::vector<Listen>::iterator next_listen = next_listeners.begin(); next_listen != next_listeners.end(); next_listen++) {
+                            if (it_listen->host == next_listen->host && it_listen->port == next_listen->port) {
+                                if (found == false)
+                                    next_server_names.erase(name_found);
+                                found = true;
+                                Logger::log(LOG_WARNING, "conflicting server name " + current_name + " on " + it_listen->host + ":" + it_listen->port + ", ignored");
+                                break ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void    Parser::print_servers_directives() {
     for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it)
 		it->print_all_directives();
 }
