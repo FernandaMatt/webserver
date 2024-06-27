@@ -1,6 +1,31 @@
 #include "WebServer.hpp"
 
 WebServer::WebServer(const std::vector<Server> &parsedServers) : _servers(parsedServers){
+	std::vector<Server>::const_iterator it = parsedServers.begin();
+	for( it; it != parsedServers.end(); ++it)
+	{
+		const std::vector<Listen> &listeners = it->get_listeners();
+		std::vector<Listen>::const_iterator listenIt = listeners.begin();
+		for (listenIt; listenIt != listeners.end(); ++listenIt)
+		{
+			std::string key = listenIt->host + ":" +listenIt->port;
+			this->_groupServers[key].push_back(*it);
+		}
+	}
+
+	std::map<std::string, std::vector<Server>>::const_iterator mapIt = this->_groupServers.begin();
+	for ( mapIt; mapIt != this->_groupServers.end(); ++mapIt)
+	{
+		std::cout << "for key: " << mapIt->first << std::endl;
+		// int count = 1;
+		// std::vector<Server>::const_iterator servIt = mapIt->second.begin();
+		// for (servIt; servIt != mapIt->second.end(); ++servIt)
+		// {
+		// 	std::cout << "server[" << count << "] :" << std::endl;
+		// 	servIt.print_all_directives();
+		// 	count++;
+		// }
+	}
 
 }
 

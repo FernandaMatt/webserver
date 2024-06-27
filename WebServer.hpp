@@ -16,6 +16,7 @@ class WebServer {
 	private:
 		std::vector<Server>	_servers;
 		int					_epollFD;
+		std::map<std::string, std::vector<Server>> _groupServers;
 
 		WebServer();
 
