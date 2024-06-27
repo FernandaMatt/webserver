@@ -6,7 +6,7 @@ ResponseBuilder::ResponseBuilder() {
 ResponseBuilder::ResponseBuilder(int fd, std::vector<Server> servers, char *request) : 
 	_fd(fd), _candidateServers(servers), _request(request) {
 	RequestParser parser;
-	_parsedRequest = parser.parseRequest(request); //turn into static function and in the buildResponse function
+	_parsedRequest = parser.parseRequest(request); //turn into static function and call in the buildResponse function
 }
 
 ResponseBuilder::~ResponseBuilder() {
@@ -77,7 +77,7 @@ bool ResponseBuilder::isBodySizeAllowed() {
 
 void ResponseBuilder::checkMethodAndBodySize() {
     std::string method;
-    if (_parsedRequest.method == GET) {
+    if (_parsedRequest.method == GET) { //stop using Enum for GET, POST, DELETE, and only use std::string
        method = "GET";
     }
     else if (_parsedRequest.method == POST) {
@@ -195,18 +195,18 @@ void ResponseBuilder::buildResponse() {
             return;
         }
         delegateRequest();
-        if (pathIsFile())//check if it is a file, if it is a file return the file - checked in the root of the server first
+        if (pathIsFile()) //check if the path is a file using the server root
             return;
-        defineLocation(); //make it insensible to '/' at the end of the path
+        defineLocation();
         checkMethodAndBodySize();
-        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << DOING
+        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException
     }
     catch (ForbiddenException &e) {
         _response.loadDefaultErrorPage(403);
         return;
     }
     catch (NoLocationException &e) {
-        _response.loadDefaultErrorPage(404); //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403
+        _response.loadDefaultErrorPage(404); //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403 << should not be done in searchLocation() ?
         return;
     }
     catch (MethodNotAllowedException &e) {
