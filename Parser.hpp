@@ -9,6 +9,7 @@
 # include <unistd.h>
 # include <vector>
 # include <stdexcept>
+# include <algorithm>
 
 class Server;
 
@@ -37,6 +38,7 @@ class Parser {
         Location    &parse_location(std::string &location_block, Location &location);
         void        set_server_directives(std::string &key, std::string &value, Server &server);
         void        set_location_directives(std::string &key, std::string &value, Location &location);
+        void        check_duplicate_server_names();
 };
 
 #endif
