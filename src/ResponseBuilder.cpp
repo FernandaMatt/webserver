@@ -54,12 +54,6 @@ void ResponseBuilder::defineLocation() {
     for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
         if (_parsedRequest.path == it->get_path()) {
             _location = *it;
-            // std::string body ="Location found!\n\n" + _server.get_root() + _location.get_path();
-            // std::string contentLength = std::to_string(body.length());
-            // _response.setStatusMessage("HTTP/1.1 200 OK\r\n");
-            // std::string headers = "Content-Length:" + contentLength + "\r\n\r\n";
-            // _response.setHttpHeaders(headers.c_str());
-            // _response.setResponseContent(body.c_str());
             return;
         }
     }
