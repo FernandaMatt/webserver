@@ -35,7 +35,7 @@ typedef struct httpRequest
 	std::string host;
 	std::string port;
 	std::string body;
-	std::string statusCode;
+	int statusCode;
 
 	void printRequest()
 	{

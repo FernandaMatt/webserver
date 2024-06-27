@@ -35,12 +35,12 @@ httpRequest RequestParser::parseRequest(std::string request)
 		req.port = getPort(req.headers["Host"]);
 	} catch (std::exception &e) {
 		if (std::string(e.what()) == "Bad request")
-			req.statusCode = "400";
-		if (std::string(e.what()) == "Method not allowed") //ASK: um método que não implementamos é not allowed?
-			req.statusCode = "405";
+			req.statusCode = 400;
+		if (std::string(e.what()) == "Method not allowed")
+			req.statusCode = 405;
 		return req;
 	}
-	req.statusCode = "200";
+	req.statusCode = 200;
 	return req;
 }
 
@@ -70,8 +70,10 @@ std::string RequestParser::getPath(std::string &parsing_request)
 	if (pos == std::string::npos)
 		throw std::invalid_argument("Bad request");
 	url = parsing_request.substr(0, pos);
-	if (url[0] != '/')
+	if (url[0] != '/') //Not a bad request? Check behavior described in Discord by Maragao !
 		throw std::invalid_argument("Bad request");
+    if (url.size() > 1 && url[url.size() - 1] == '/')
+        url = url.substr(0, url.size() - 1);
 	parsing_request = parsing_request.substr(pos + 1);
 	return url;
 }

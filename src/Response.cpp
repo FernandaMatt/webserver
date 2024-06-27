@@ -33,12 +33,12 @@ std::vector<char> Response::stringToVector(const std::string& str) {
 
 void Response::loadFromFile(const std::string& filePath)
 {
+    _responseContent.clear();
+
     std::ifstream fileStream(filePath.c_str(), std::ios::binary);
     if (!fileStream) {
         Logger::log(LOG_ERROR, "Error opening file: " + filePath);
-        _statusMessage = stringToVector("HTTP/1.1 404 Not Found\r\n"); //create function do load default error page
-        _httpHeaders = stringToVector("Content-Length: 0\r\n\r\n");
-        _responseContent.clear();
+        loadDefaultErrorPage(404);
         return;
     }
 
@@ -50,9 +50,7 @@ void Response::loadFromFile(const std::string& filePath)
 
     if (!fileStream.read(_responseContent.data(), size)) {
         Logger::log(LOG_ERROR, "Error reading file: " + filePath);
-        _statusMessage = stringToVector("HTTP/1.1 500 Internal Server Error\r\n"); //create function do load default error page
-        _httpHeaders = stringToVector("Content-Length: 0\r\n\r\n");
-        _responseContent.clear();
+        loadDefaultErrorPage(500);
         return;
     }
 
@@ -80,6 +78,7 @@ void Response::setResponseContent(const char *responseContent) {
 }
 
 void Response::loadDefaultErrorPage(int statusCode) {
+    _responseContent.clear();
     switch (statusCode) {
         case 404:
             setStatusMessage(STATUS_404);

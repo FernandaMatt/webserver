@@ -50,6 +50,13 @@ class ResponseBuilder {
                 }
         };
 
+        class ForbiddenException : public std::exception {
+            public:
+               virtual const char* what() const throw() {
+                    return "Forbidden";
+                }
+        };
+
 	private:
 		int _fd;
 		std::vector<Server> _candidateServers;

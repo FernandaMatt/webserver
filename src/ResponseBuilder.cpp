@@ -76,7 +76,7 @@ bool ResponseBuilder::isBodySizeAllowed() {
 }
 
 void ResponseBuilder::checkMethodAndBodySize() {
-    std::string method ;
+    std::string method;
     if (_parsedRequest.method == GET) {
        method = "GET";
     }
@@ -88,6 +88,9 @@ void ResponseBuilder::checkMethodAndBodySize() {
     }
     if (!isMethodAllowed(method)) {
         throw MethodNotAllowedException();
+    }
+    if (method == "GET" && !isBodySizeAllowed()) {
+        throw BodySizeExceededException();
     }
     if (method == "POST" && !isBodySizeAllowed()) {
         throw BodySizeExceededException();
@@ -124,14 +127,14 @@ bool ResponseBuilder::pathIsFile() {
         _response.loadFromFile(file_path);
         return true;
     }
-    //need to check how the file is searched in this step, using server root ?
+    //IMPORTANT: need to check how the file is searched in this step, using server root or location root/alias?
     return false;
 }
 
 void ResponseBuilder::loadResponseFromFile(std::string path) {
     std::ifstream fileStream(path.c_str());
     if (!fileStream) {
-        throw NoLocationException(); //check if there is a root and index, but no file in the server folders the error is still 404
+        throw ForbiddenException();
     }
     _response.loadFromFile(path);
 }
@@ -187,6 +190,10 @@ void ResponseBuilder::buildResponse() {
 
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
+        if (_parsedRequest.statusCode != 200) {
+            _response.loadDefaultErrorPage(_parsedRequest.statusCode);
+            return;
+        }
         delegateRequest();
         if (pathIsFile())//check if it is a file, if it is a file return the file - checked in the root of the server first
             return;
@@ -194,20 +201,24 @@ void ResponseBuilder::buildResponse() {
         checkMethodAndBodySize();
         searchLocation(); //check if there is an index file in the location, if not throw NoLocationException << DOING
     }
+    catch (ForbiddenException &e) {
+        _response.loadDefaultErrorPage(403);
+        return;
+    }
     catch (NoLocationException &e) {
         _response.loadDefaultErrorPage(404); //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403
         return;
     }
     catch (MethodNotAllowedException &e) {
-        _response.loadDefaultErrorPage(405); //create function to return right error page defineErrorPage(int error_code)
+        _response.loadDefaultErrorPage(405);
         return;
     }
     catch (BodySizeExceededException &e) {
-        _response.loadDefaultErrorPage(413); //create function to return right error page
+        _response.loadDefaultErrorPage(413);
         return;
     }
     catch (InternalServerErrorException &e) {
-        _response.loadDefaultErrorPage(500); //create function to return right error page
+        _response.loadDefaultErrorPage(500);
         return;
     }
     catch (std::exception &e){
