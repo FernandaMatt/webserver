@@ -22,7 +22,7 @@ class Location {
         void    set_cgi_ext(std::string cgi_ext);
 
         //getters
-    	std::string                 get_path();
+    	std::string                 get_path() const;
         std::string                 get_root();
         std::string                 get_alias();
         long                        get_client_max_body_size();
@@ -34,7 +34,7 @@ class Location {
         std::string                 get_cgi_path();
         std::string                 get_cgi_ext();
 
-        void    print_all_directives();
+        void    print_all_directives() const;
 
     private:
         std::string                 _path;

@@ -144,7 +144,7 @@ void    Location::set_cgi_ext(std::string cgi_ext) {
 }
 
 //getters
-std::string                 Location::get_path() {return _path;}
+std::string                 Location::get_path() const {return _path;}
 
 std::string                 Location::get_root() {return _root;}
 
@@ -171,7 +171,7 @@ std::string                 Location::get_cgi_path() {return _cgi_path;}
 
 std::string                 Location::get_cgi_ext() {return _cgi_ext;}
 
-void    Location::print_all_directives() {
+void    Location::print_all_directives() const {
 
     std::cout << "      path: " << _path << std::endl;
     std::cout << "      root: " << _root << std::endl;
@@ -188,7 +188,7 @@ void    Location::print_all_directives() {
         std::cout << _methods[i] << " ";
     }
     std::cout << std::endl;
-    std::map<int, std::string>::iterator it;
+    std::map<int, std::string>::const_iterator it;
     for (it = _error_pages.begin(); it != _error_pages.end(); it++) {
         std::cout << "      error_page [ " << it->first << " ]: " << it->second << std::endl;
     }

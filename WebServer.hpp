@@ -14,12 +14,13 @@ class Logger;
 
 class WebServer {
 	private:
-		std::vector<Server>	_servers;
 		int					_epollFD;
-		std::map<std::string, std::vector<Server>> _groupServers;
+		std::map<int, std::vector<Server>> _fdToServers;
 
 		WebServer();
 
+		void	creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers);
+		void	settingListeners();
 		void	nonBlocking(const int &fd);
 		void	addToEpollServers( );
 		void	addToEpoll(const int &fd);

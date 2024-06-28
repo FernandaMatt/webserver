@@ -231,7 +231,7 @@ void    Parser::parse_directives(std::string const &server_block) {
     }
 
     server.set_default_directives();
-    server.set_sock_fd();
+    // server.set_sock_fd();
     _servers.push_back(server);
 }
 

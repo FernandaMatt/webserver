@@ -1,6 +1,8 @@
 #include "WebServer.hpp"
 
-WebServer::WebServer(const std::vector<Server> &parsedServers) : _servers(parsedServers){
+WebServer::WebServer(const std::vector<Server> &parsedServers) {
+	std::map<std::string, std::vector<Server>> groupServers;
+
 	std::vector<Server>::const_iterator it = parsedServers.begin();
 	for( it; it != parsedServers.end(); ++it)
 	{
@@ -9,34 +11,130 @@ WebServer::WebServer(const std::vector<Server> &parsedServers) : _servers(parsed
 		for (listenIt; listenIt != listeners.end(); ++listenIt)
 		{
 			std::string key = listenIt->host + ":" +listenIt->port;
-			this->_groupServers[key].push_back(*it);
+			groupServers[key].push_back(*it);
 		}
 	}
 
-	std::map<std::string, std::vector<Server>>::const_iterator mapIt = this->_groupServers.begin();
-	for ( mapIt; mapIt != this->_groupServers.end(); ++mapIt)
-	{
-		std::cout << "for key: " << mapIt->first << std::endl;
-		// int count = 1;
-		// std::vector<Server>::const_iterator servIt = mapIt->second.begin();
-		// for (servIt; servIt != mapIt->second.end(); ++servIt)
-		// {
-		// 	std::cout << "server[" << count << "] :" << std::endl;
-		// 	servIt.print_all_directives();
-		// 	count++;
-		// }
-	}
+	// // just to ckeck REMOVE IT
+	// std::map<std::string, std::vector<Server>>::const_iterator checkIt = groupServers.begin();
+	// for ( checkIt; checkIt != groupServers.end(); ++checkIt)
+	// {
+	// 	std::cout << "for key: " << checkIt->first << std::endl;
+	// 	int count = 1;
+	// 	std::vector<Server>::const_iterator servIt = checkIt->second.begin();
+	// 	for (servIt; servIt != checkIt->second.end(); ++servIt)
+	// 	{
+	// 		std::cout << "server[" << count << "]:" << std::endl;
+	// 		(*servIt).print_all_directives();
+	// 		count++;
+	// 	}
+	// }
+	// // just to ckeck REMOVE IT
 
+	creatingAndBinding(groupServers);
+
+	// // just to ckeck REMOVE IT
+	// std::map<int, std::vector<Server>>::const_iterator fdIT = this->_fdToServers.begin();
+	// for ( fdIT; fdIT != this->_fdToServers.end(); ++fdIT)
+	// {
+	// 	std::cout << "for fd: " << fdIT->first << std::endl;
+	// 	int count = 1;
+	// 	std::vector<Server>::const_iterator servIt = fdIT->second.begin();
+	// 	for (servIt; servIt != fdIT->second.end(); ++servIt)
+	// 	{
+	// 		std::cout << "server[" << count << "]:" << std::endl;
+	// 		(*servIt).print_all_directives();
+	// 		count++;
+	// 	}
+	// }
+	// // just to ckeck REMOVE IT
 }
 
 WebServer::~WebServer() {
-	if(!this->_servers.empty()) {
-		for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it) {
-			const std::vector<int>& server_fd_list = it->get_sock_fd();
-			for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); ++fdIt){
-				close(*fdIt);
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		close(it->first);
+	}
+}
+
+void WebServer::creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers)
+{
+	std::map<std::string, std::vector<Server>>::const_iterator mapIt = groupServers.begin();
+	for (mapIt; mapIt != groupServers.end(); ++mapIt)
+	{
+		size_t lastColonsPos = mapIt->first.find_last_of(":");
+		std::string host = mapIt->first.substr(0, lastColonsPos);
+		std::string port = mapIt->first.substr(lastColonsPos + 1);
+
+		struct addrinfo	hints;
+		struct addrinfo	*result;
+		struct addrinfo	*rp;
+		int				status;
+		int				sock_fd = -1;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags = AI_PASSIVE;
+		hints.ai_protocol = 0;
+
+		status = getaddrinfo(host.c_str(), port.c_str(), &hints, &result);
+		if (status != 0)
+		{
+			Logger::log(LOG_ERROR, gai_strerror(status));
+			throw std::runtime_error("Error: getaddrinfo()");
+		}
+
+		for (rp = result; rp != NULL; rp = rp->ai_next)
+		{
+			sock_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+
+			if (sock_fd == -1)
+				continue;
+
+			int option = 1;
+			if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1)
+			{
+				Logger::log(LOG_ERROR, "setsockopt() failure");
+				close(sock_fd);
+				freeaddrinfo(result);
+				throw std::runtime_error("Error: setsockopt()");
+			}
+
+			if (bind(sock_fd, rp->ai_addr, rp->ai_addrlen) == 0)
+			{
+				this->_fdToServers[sock_fd] = mapIt->second;
+				std::vector<Server>::iterator it = _fdToServers[sock_fd].begin();
+				for (it; it != _fdToServers[sock_fd].end(); ++it)
+					(*it).set_host_port(mapIt->first);
+				break;
 			}
 		}
+		if (rp == NULL)
+		{
+			if(sock_fd != -1)
+				close(sock_fd);
+			Logger::log(LOG_ERROR, "Could not bind " + mapIt->first);
+		}
+		freeaddrinfo(result);
+	}
+}
+
+void WebServer::settingListeners() {
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		nonBlocking(it->first);
+
+		if (listen (it->first, SOMAXCONN) == -1)
+		{
+				std::string message = "listen() failure in: " + _fdToServers[it->first][0].get_host_port();
+				Logger::log(LOG_WARNING, message);
+				continue ;
+		}
+		std::string message = "Server is listening on: " + _fdToServers[it->first][0].get_host_port();
+		Logger::log(LOG_INFO, message);
 	}
 }
 
@@ -63,24 +161,19 @@ void WebServer::addToEpoll(const int &fd) {
 }
 
 void WebServer::addToEpollServers(){
-	for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it)
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
 	{
-		const std::vector<int>& server_fd_list = it->get_sock_fd();
-		for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); ++fdIt){
-			if(*fdIt != -1){
-				addToEpoll(*fdIt);
-			}
-		}
+		addToEpoll(it->first);
 	}
 }
 
 int WebServer::isServerFDCheck(const int &i) const {
-	for (std::vector<Server>::const_iterator it = this->_servers.begin(); it != this->_servers.end(); ++it) {
-		const std::vector<int>& server_fd_list = it->get_sock_fd();
-		for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); ++fdIt){
-			if (i == *fdIt)
-				return (*fdIt);
-		}
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		if ( i == it->first)
+			return (it->first);
 	}
 	return (-1);
 }
@@ -152,26 +245,7 @@ void WebServer::handleConnections() {
 }
 
 void WebServer::run() {
-	for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); it++)
-	{
-		const std::vector<int>& server_fd_list = it->get_sock_fd();
-		const std::vector<Listen>& server_listeners = it->get_listeners();
-		std::vector<Listen>::const_iterator listenIt = server_listeners.begin();
-		for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); fdIt++, listenIt++){
-			if(*fdIt == -1)
-				continue;
-
-			nonBlocking(*fdIt);
-
-			if(listen(*fdIt, SOMAXCONN) == -1) {
-				std::string message = "liste() failure in: " + listenIt->host + ":" + listenIt->port;
-				Logger::log(LOG_WARNING, message);
-				continue ;
-			}
-			std::string message = "Server is listening on: " + listenIt->host + ":" + listenIt->port;
-			Logger::log(LOG_INFO, message);
-		}
-	}
+	settingListeners();
 
 	this->_epollFD = epoll_create1(0);
 	if (this->_epollFD == -1)
