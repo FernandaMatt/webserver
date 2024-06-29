@@ -8,6 +8,7 @@
 # include "Logger.hpp"
 # include "Server.hpp"
 # include "defines.hpp"
+# include "src/ResponseBuilder.hpp"
 
 class Server;
 class Logger;

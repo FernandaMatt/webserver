@@ -3,6 +3,7 @@
 # include <iostream>
 #include <map>
 #include <vector>
+#include <sys/stat.h> 
 
 class Location {
     public:
@@ -35,6 +36,8 @@ class Location {
         std::string&                get_upload_path();
         std::string&                get_cgi_path();
         std::string&                get_cgi_ext();
+
+        std::string                 search_index_file(std::string path);
 
         void    print_all_directives();
 
