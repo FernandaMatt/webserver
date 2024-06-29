@@ -19,7 +19,6 @@ class WebServer {
 
 		WebServer();
 
-		void	nonBlocking(const int &fd);
 		void	creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers);
 		void	settingListeners();
 		void	addToEpollServers( );

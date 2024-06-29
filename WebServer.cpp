@@ -139,20 +139,6 @@ void WebServer::settingListeners() {
 	}
 }
 
-void WebServer::nonBlocking(const int &fd) {
-	int	flags;
-	int	status;
-
-	flags = fcntl(fd, F_GETFL, 0);
-	if(flags == -1)
-		throw std::runtime_error("Error: fcntl()");
-
-	flags |= O_NONBLOCK;
-	status = fcntl(fd, F_SETFL, flags);
-	if(status == -1)
-		throw std::runtime_error("Error: fcntl() status");
-}
-
 void WebServer::addToEpoll(const int &fd, uint32_t events) {
 	struct epoll_event event;
 	event.data.fd = fd;
@@ -190,7 +176,6 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	nonBlocking(newSockFD);
 	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT | EPOLLET);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
@@ -221,22 +206,15 @@ void WebServer::handleConnections()
 				{
 					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
 
-					if (bread == -1)
-					{
-						if (errno != EAGAIN)
-						{
-							Logger::log(LOG_WARNING, "read() failure");
-							done = 1;
-						}
-						break ;
-					}
-					else if (bread == 0)
+					if (bread <= 0)
 					{
 						done = 1;
 						break ;
 					}
 					std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, world!";
 					write(events[i].data.fd, response.c_str(), response.length());
+					done = 1;
+					break ;
 				}
 				if (done)
 				{
