@@ -88,7 +88,7 @@ void WebServer::creatingAndBinding(const std::map<std::string, std::vector<Serve
 
 		for (rp = result; rp != NULL; rp = rp->ai_next)
 		{
-			sock_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+			sock_fd = socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK , rp->ai_protocol);
 
 			if (sock_fd == -1)
 				continue;
@@ -125,8 +125,6 @@ void WebServer::settingListeners() {
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
 	{
-		nonBlocking(it->first);
-
 		if (listen (it->first, SOMAXCONN) == -1)
 		{
 				std::string message = "listen() failure in: " + _fdToServers[it->first][0].get_host_port();
@@ -136,20 +134,6 @@ void WebServer::settingListeners() {
 		std::string message = "Server is listening on: " + _fdToServers[it->first][0].get_host_port();
 		Logger::log(LOG_INFO, message);
 	}
-}
-
-void WebServer::nonBlocking(const int &fd) {
-	int	flags;
-	int	status;
-
-	flags = fcntl(fd, F_GETFL, 0);
-	if(flags == -1)
-		throw std::runtime_error("Error: fcntl()");
-
-	flags |= O_NONBLOCK;
-	status = fcntl(fd, F_SETFL, flags);
-	if(status == -1)
-		throw std::runtime_error("Error: fcntl() status");
 }
 
 void WebServer::addToEpoll(const int &fd) {
@@ -178,7 +162,8 @@ int WebServer::isServerFDCheck(const int &i) const {
 	return (-1);
 }
 
-void WebServer::handleConnections() {
+void WebServer::handleConnections()
+{
 	struct epoll_event events[MAX_EVENTS];
 	char buf[BUF_SIZE];
 
@@ -209,7 +194,6 @@ void WebServer::handleConnections() {
 							break;
 						}
 					}
-					nonBlocking(newSockFD);
 					addToEpoll (newSockFD);
 				}
 			}
@@ -238,7 +222,10 @@ void WebServer::handleConnections() {
 					write(events[i].data.fd, response.c_str(), response.length());
 				}
 				if (done)
+				{
+					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
 					close(events[i].data.fd);
+				}
 			}
 		}
 	}
