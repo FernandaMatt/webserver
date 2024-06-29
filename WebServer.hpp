@@ -19,10 +19,12 @@ class WebServer {
 
 		WebServer();
 
+		void	nonBlocking(const int &fd);
 		void	creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers);
 		void	settingListeners();
 		void	addToEpollServers( );
-		void	addToEpoll(const int &fd);
+		void	addToEpoll(const int &fd, uint32_t events);
+		void	acceptConnection(int *serverFd);
 		void	handleConnections( );
 		int		isServerFDCheck(const int &i) const;
 

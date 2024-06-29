@@ -54,7 +54,7 @@ typedef struct httpRequest
 }				httpRequest;
 
 
-#define MAX_EVENTS 10
+#define MAX_EVENTS 20
 #define BUF_SIZE 1024
 
 #define LOGGING_ENABLED 1

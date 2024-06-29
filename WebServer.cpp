@@ -48,12 +48,15 @@ WebServer::WebServer(const std::vector<Server> &parsedServers) {
 	// 	}
 	// }
 	// // just to ckeck REMOVE IT
+
+	settingListeners();
 }
 
 WebServer::~WebServer() {
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
 	{
+		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, it->first, 0);
 		close(it->first);
 	}
 }
@@ -136,10 +139,24 @@ void WebServer::settingListeners() {
 	}
 }
 
-void WebServer::addToEpoll(const int &fd) {
+void WebServer::nonBlocking(const int &fd) {
+	int	flags;
+	int	status;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if(flags == -1)
+		throw std::runtime_error("Error: fcntl()");
+
+	flags |= O_NONBLOCK;
+	status = fcntl(fd, F_SETFL, flags);
+	if(status == -1)
+		throw std::runtime_error("Error: fcntl() status");
+}
+
+void WebServer::addToEpoll(const int &fd, uint32_t events) {
 	struct epoll_event event;
 	event.data.fd = fd;
-	event.events = EPOLLIN | EPOLLET;
+	event.events = events;
 	if (epoll_ctl(this->_epollFD, EPOLL_CTL_ADD, fd, &event) == -1)
 		throw std::runtime_error("epoll_ctl() failure");
 }
@@ -148,7 +165,7 @@ void WebServer::addToEpollServers(){
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
 	{
-		addToEpoll(it->first);
+		addToEpoll(it->first, EPOLLIN | EPOLLET);
 	}
 }
 
@@ -160,6 +177,24 @@ int WebServer::isServerFDCheck(const int &i) const {
 			return (it->first);
 	}
 	return (-1);
+}
+
+void WebServer::acceptConnection(int *serverFd)
+{
+	struct sockaddr_storage peer_addr;
+	socklen_t peer_addr_len = sizeof(peer_addr);
+
+	int newSockFD = accept(*serverFd, (struct sockaddr *) &peer_addr, &peer_addr_len);
+	if (newSockFD == -1)
+	{
+		Logger::log(LOG_WARNING, "accept() failure");
+		return ;
+	}
+	nonBlocking(newSockFD);
+	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT | EPOLLET);
+	std::ostringstream oss;
+	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
+	Logger::log(LOG_INFO, oss.str().c_str());
 }
 
 void WebServer::handleConnections()
@@ -177,33 +212,15 @@ void WebServer::handleConnections()
 		{
 			int isServerFD = isServerFDCheck(events[i].data.fd);
 			if (isServerFD != -1)
-			{
-				while (true)
-				{
-					struct sockaddr_storage peer_addr;
-					socklen_t peer_addr_len = sizeof(peer_addr);
-
-					int newSockFD = accept(isServerFD, (struct sockaddr *) &peer_addr, &peer_addr_len);
-					if (newSockFD == -1)
-					{
-						if (errno == EAGAIN || errno == EWOULDBLOCK )
-							break ;
-						else
-						{
-							Logger::log(LOG_WARNING, "accept() failure");
-							break;
-						}
-					}
-					addToEpoll (newSockFD);
-				}
-			}
+				acceptConnection(&isServerFD);
 			else
 			{
 				int done = 0;
 
 				while (true)
 				{
-					ssize_t bread = read(events[i].data.fd, buf, sizeof(buf));
+					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
+
 					if (bread == -1)
 					{
 						if (errno != EAGAIN)
@@ -232,8 +249,6 @@ void WebServer::handleConnections()
 }
 
 void WebServer::run() {
-	settingListeners();
-
 	this->_epollFD = epoll_create1(0);
 	if (this->_epollFD == -1)
 		throw std::runtime_error("epoll_create() failure");
