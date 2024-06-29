@@ -14,11 +14,10 @@
 class ResponseBuilder {
 	public:
 		ResponseBuilder();
-		ResponseBuilder(int fd, std::vector<Server> servers, char *request);
 		~ResponseBuilder();
 
 		void printInitializedAttributes();
-        void buildResponse();
+        void buildResponse(int fd, std::vector<Server> servers, char *request);
 
         const std::vector<char> getResponse() const;
 
@@ -66,9 +65,13 @@ class ResponseBuilder {
 		Server _server;
         Location _location;
 
-		void delegateRequest();
+        void setFd(int fd);
+        void setCandidateServers(std::vector<Server> servers);
+        void setRequest(char *request);
+    	void delegateRequest();
         bool isFile(std::string path);
         bool pathIsFile();
+        // bool pathPointsIndexFile();
         void defineLocation();
         void checkMethodAndBodySize();
         void searchLocation();

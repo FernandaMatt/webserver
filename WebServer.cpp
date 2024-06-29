@@ -63,6 +63,7 @@ int WebServer::isServerFDCheck(const int &i) const {
 void WebServer::handleConnections() {
     struct epoll_event events[MAX_EVENTS];
     char buf[BUF_SIZE];
+    ResponseBuilder response;
 
     while (true)
     {
@@ -118,8 +119,7 @@ void WebServer::handleConnections() {
                         done = 1;
                         break ;
                     }
-                    ResponseBuilder response(events[i].data.fd, this->_servers, buf);
-                    response.buildResponse();
+                    response.buildResponse(events[i].data.fd, this->_servers, buf);
                     std::vector<char> responseString = response.getResponse();
                     write(events[i].data.fd, responseString.data(), responseString.size());
                 }

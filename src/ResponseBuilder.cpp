@@ -3,13 +3,19 @@
 ResponseBuilder::ResponseBuilder() {
 }
 
-ResponseBuilder::ResponseBuilder(int fd, std::vector<Server> servers, char *request) : 
-	_fd(fd), _candidateServers(servers), _request(request) {
-	RequestParser parser;
-	_parsedRequest = parser.parseRequest(request); //turn into static function and call in the buildResponse function
+ResponseBuilder::~ResponseBuilder() {
 }
 
-ResponseBuilder::~ResponseBuilder() {
+void ResponseBuilder::setFd(int fd) {
+    _fd = fd;
+}
+
+void ResponseBuilder::setCandidateServers(std::vector<Server> servers) {
+    _candidateServers = servers;
+}
+
+void ResponseBuilder::setRequest(char *request) {
+    _request = request;
 }
 
 void ResponseBuilder::printInitializedAttributes() {
@@ -120,14 +126,29 @@ bool ResponseBuilder::pathIsFile() {
     if (server_root[server_root.length() - 1] != '/')
         server_root += "/";
     path = _parsedRequest.path;
-    if (path[0] == '/')
+    if (path[0] == '/') //the presence or absence of the bar should not be ignored, see behavior described by Maragao
         path = path.substr(1);
     std::string file_path = server_root + path;
     if (isFile(file_path)) {
         _response.loadFromFile(file_path);
         return true;
     }
-    //IMPORTANT: need to check how the file is searched in this step, using server root or location root/alias?
+
+    std::string file_name;
+    std::string index_file_path;
+    std::vector<std::string> index = _server.get_index();
+    for (size_t i = 0; i < index.size(); i++) {
+        file_name = index[i];
+        if (file_name[0] == '/')
+            file_name = file_name.substr(1);
+        if (file_name[file_name.size() - 1] == '/')
+            file_name = file_name.substr(0, file_name.size() - 1);
+        index_file_path = file_path + '/' +file_name;
+        if (isFile(index_file_path)) {
+            _response.loadFromFile(index_file_path);
+            return true;
+        }
+    }
     return false;
 }
 
@@ -148,7 +169,7 @@ void ResponseBuilder::searchAlias() {
     }
     std::string index_file_path = _location.search_index_file(alias);
     if (index_file_path == "") {
-        throw NoLocationException();
+        throw ForbiddenException();
     }
     loadResponseFromFile(index_file_path);
 }
@@ -171,7 +192,7 @@ void ResponseBuilder::searchRoot() {
         
         std::string index_file_path = _location.search_index_file(file_path);
         if (index_file_path == "") {
-            throw NoLocationException();
+            throw ForbiddenException();
         }
         file_path += "/" + index_file_path;
         loadResponseFromFile(index_file_path);
@@ -186,20 +207,24 @@ void ResponseBuilder::searchLocation() {
     searchRoot();
 }
 
-void ResponseBuilder::buildResponse() {
+void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *request) {
 
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
+        setFd(fd);
+        setCandidateServers(servers);
+        setRequest(request);
+        _parsedRequest = RequestParser::parseRequest(_request);
         if (_parsedRequest.statusCode != 200) {
             _response.loadDefaultErrorPage(_parsedRequest.statusCode);
             return;
         }
         delegateRequest();
-        if (pathIsFile()) //check if the path is a file using the server root
+        if (pathIsFile()) //check if the path is a file using the server root and index
             return;
         defineLocation();
         checkMethodAndBodySize();
-        searchLocation(); //check if there is an index file in the location, if not throw NoLocationException
+        searchLocation(); //check if there is an index file in the location, if not throw ForbiddenException
     }
     catch (ForbiddenException &e) {
         _response.loadDefaultErrorPage(403);
