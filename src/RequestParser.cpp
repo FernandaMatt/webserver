@@ -87,7 +87,7 @@ std::string RequestParser::getPath(std::string &parsing_request)
 	return url;
 }
 
-std::map<std::string, std::string> RequestParser::getQueryVariables(std::string parsing_request)
+std::map<std::string, std::string> RequestParser::getQueryVariables(std::string &parsing_request)
 {
     std::map<std::string, std::string> queryVariables;
     std::string query;
@@ -98,7 +98,7 @@ std::map<std::string, std::string> RequestParser::getQueryVariables(std::string 
     pos = parsing_request.find(" ");
     if (pos == std::string::npos)
         throw std::invalid_argument("Bad request");
-    query = parsing_request.substr(1, pos);
+    query = parsing_request.substr(1, pos - 1);
     parsing_request = parsing_request.substr(pos + 1);
     pos = query.find("&");
     while (pos != std::string::npos)
@@ -108,6 +108,12 @@ std::map<std::string, std::string> RequestParser::getQueryVariables(std::string 
         pos = query.find("&");
     }
     queryVariables[query.substr(0, query.find("="))] = query.substr(query.find("=") + 1);
+    //print queryVariables
+    std::map<std::string, std::string>::iterator it = queryVariables.begin();
+    for (it; it != queryVariables.end(); ++it)
+    {
+        std::cout << "key: " << it->first << " value: " << it->second << std::endl;
+    }
     return queryVariables;
 }
 
