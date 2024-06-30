@@ -70,8 +70,8 @@ class ResponseBuilder {
         void setRequest(char *request);
     	void delegateRequest();
         bool isFile(std::string path);
+        bool isDirectory(std::string path);
         bool pathIsFile();
-        // bool pathPointsIndexFile();
         void defineLocation();
         void checkMethodAndBodySize();
         void searchLocation();
@@ -81,4 +81,5 @@ class ResponseBuilder {
         void defineErrorPage(int error_code);
         void searchRoot();
         void searchAlias();
+        bool checkAutoIndex(std::string &path);
 };
