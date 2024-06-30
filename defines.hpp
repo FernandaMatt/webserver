@@ -32,6 +32,7 @@ typedef struct httpRequest
 	std::string path;
 	std::string version;
 	std::map<std::string, std::string> headers;
+	std::map<std::string, std::string> queryVariables;
 	std::string host;
 	std::string port;
 	std::string body;
