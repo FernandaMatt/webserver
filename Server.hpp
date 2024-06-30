@@ -49,7 +49,7 @@ class Server {
         std::map<int, std::string>& get_error_pages();
         std::string                 get_error_page_path(int error_code);
         std::vector<std::string>    get_methods();
-        std::vector<Location>       get_location();
+        std::vector<Location>&       get_location();
         std::string                 get_host_port();
         // const std::vector<int>&     get_sock_fd() const;
 

@@ -358,7 +358,7 @@ void    Server::print_all_directives() const {
     }
 
     std::cout << std::endl;
-    std::map<int, std::string>::iterator it;
+    std::map<int, std::string>::const_iterator it;
     for (it = _error_pages.begin(); it != _error_pages.end(); it++) {
         std::cout << "   error_page [ " << it->first << " ]: " << it->second << std::endl;
     }
@@ -370,6 +370,6 @@ void    Server::print_all_directives() const {
     }
 
 	std::cout << "host_port: " << this->_host_port << std::endl;
-	
+
     std::cout << std::endl;
 }

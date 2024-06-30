@@ -211,9 +211,11 @@ void WebServer::handleConnections()
 						done = 1;
 						break ;
 					}
-					response.buildResponse(events[i].data.fd, this->_servers, buf);
+					// response.buildResponse(events[i].data.fd, this->_servers, buf);
                     std::vector<char> responseString = response.getResponse();
                     write(events[i].data.fd, responseString.data(), responseString.size());
+					done = 1;
+					break ;
 				}
 				if (done)
 				{
