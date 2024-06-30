@@ -15,14 +15,17 @@ class Logger;
 
 class WebServer {
 	private:
-		std::vector<Server>	_servers;
 		int					_epollFD;
+		std::map<int, std::vector<Server>> _fdToServers;
+		std::map<int, std::vector<Server>> _conections;
 
 		WebServer();
 
-		void	nonBlocking(const int &fd);
+		void	creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers);
+		void	settingListeners();
 		void	addToEpollServers( );
-		void	addToEpoll(const int &fd);
+		void	addToEpoll(const int &fd, uint32_t events);
+		void	acceptConnection(int *serverFd);
 		void	handleConnections( );
 		int		isServerFDCheck(const int &i) const;
 

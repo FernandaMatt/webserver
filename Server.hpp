@@ -22,10 +22,12 @@ struct Listen {
     std::string host;
     std::string port;
 };
+
 class Server {
     public:
         Server();
         ~Server();
+        Server &operator = (const Server&obj);
 
         //setters
         void    set_listeners(std::string listen);
@@ -36,7 +38,8 @@ class Server {
         void    set_index(std::string index);
         void    set_error_page(std::string error_page);
         void    set_location(Location &location);
-        void    set_sock_fd(); //create and bind
+        void    set_host_port(const std::string &hostPort);
+        // void    set_sock_fd(); //create and bind
 
         //getters
         const std::vector<Listen>&  get_listeners() const;
@@ -47,8 +50,10 @@ class Server {
         std::vector<std::string>&   get_index();
         std::map<int, std::string>& get_error_pages();
         std::string                 get_error_page_path(int error_code);
-        std::vector<Location>&      get_location();
-        const std::vector<int>&     get_sock_fd() const;
+        std::vector<std::string>    get_methods();
+        std::vector<Location>&       get_location();
+        std::string                 get_host_port();
+        // const std::vector<int>&     get_sock_fd() const;
 
         void    check_port(std::string port);
         void    check_host(std::string host);
@@ -56,7 +61,7 @@ class Server {
         void    check_duplicate_listen(std::string host, std::string port);
 
         void    set_default_directives();
-        void    print_all_directives();
+        void    print_all_directives() const;
 
     private:
         std::vector<Listen>         _listeners;
@@ -67,8 +72,9 @@ class Server {
         std::vector<std::string>    _index;
         std::map<int, std::string>  _error_pages;
         std::vector<Location>       _locations;
+        std::string                 _host_port;
 
-        std::vector<int>            _sock_fd;
+        // std::vector<int>            _sock_fd;
 };
 
 #endif

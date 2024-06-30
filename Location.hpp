@@ -3,7 +3,7 @@
 # include <iostream>
 #include <map>
 #include <vector>
-#include <sys/stat.h> 
+#include <sys/stat.h>
 
 class Location {
     public:
@@ -24,9 +24,9 @@ class Location {
         void    set_cgi_ext(std::string cgi_ext);
 
         //getters
-    	std::string&                get_path();
-        std::string&                get_root();
-        std::string&                get_alias();
+    	std::string                 get_path() const;
+        std::string&                 get_root();
+        std::string&                 get_alias();
         long                        get_client_max_body_size();
         std::string&                get_autoindex();
         std::vector<std::string>&   get_index();
@@ -39,7 +39,7 @@ class Location {
 
         std::string                 search_index_file(std::string path);
 
-        void    print_all_directives();
+        void    print_all_directives() const;
 
     private:
         std::string                 _path;

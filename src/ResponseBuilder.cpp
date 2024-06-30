@@ -14,7 +14,7 @@ void ResponseBuilder::setCandidateServers(std::vector<Server> servers) {
     _candidateServers = servers;
 }
 
-void ResponseBuilder::setRequest(char *request) {
+void ResponseBuilder::setRequest(std::string request) {
     _request = request;
 }
 
@@ -275,7 +275,7 @@ void ResponseBuilder::processDELETE() {
     //delete the file
 }
 
-void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *request) {
+void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::string request) {
 
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
@@ -294,15 +294,9 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *r
             // processCGI();
             return;
         }
-        if (_parsedRequest.method == GET)
-            processGET();
-        else if (_parsedRequest.method == POST)
-            processPOST();
-        else if (_parsedRequest.method == DELETE)
-            processDELETE();
-        else {
-            throw MethodNotAllowedException();
-        }
+        defineLocation();
+        checkMethodAndBodySize();
+        searchLocation(); //check if there is an index file in the location, if not throw ForbiddenException
     }
     catch (ForbiddenException &e) {
         defineErrorPage(403);

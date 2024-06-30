@@ -1,161 +1,259 @@
 #include "WebServer.hpp"
 
-WebServer::WebServer(const std::vector<Server> &parsedServers) : _servers(parsedServers){
+WebServer::WebServer(const std::vector<Server> &parsedServers) {
+	std::map<std::string, std::vector<Server>> groupServers;
 
+	std::vector<Server>::const_iterator it = parsedServers.begin();
+	for( it; it != parsedServers.end(); ++it)
+	{
+		const std::vector<Listen> &listeners = it->get_listeners();
+		std::vector<Listen>::const_iterator listenIt = listeners.begin();
+		for (listenIt; listenIt != listeners.end(); ++listenIt)
+		{
+			std::string key = listenIt->host + ":" +listenIt->port;
+			groupServers[key].push_back(*it);
+		}
+	}
+
+	// // just to ckeck REMOVE IT
+	// std::map<std::string, std::vector<Server>>::const_iterator checkIt = groupServers.begin();
+	// for ( checkIt; checkIt != groupServers.end(); ++checkIt)
+	// {
+	// 	std::cout << "for key: " << checkIt->first << std::endl;
+	// 	int count = 1;
+	// 	std::vector<Server>::const_iterator servIt = checkIt->second.begin();
+	// 	for (servIt; servIt != checkIt->second.end(); ++servIt)
+	// 	{
+	// 		std::cout << "server[" << count << "]:" << std::endl;
+	// 		(*servIt).print_all_directives();
+	// 		count++;
+	// 	}
+	// }
+	// // just to ckeck REMOVE IT
+
+	creatingAndBinding(groupServers);
+
+	// // just to ckeck REMOVE IT
+	// std::map<int, std::vector<Server>>::const_iterator fdIT = this->_fdToServers.begin();
+	// for ( fdIT; fdIT != this->_fdToServers.end(); ++fdIT)
+	// {
+	// 	std::cout << "for fd: " << fdIT->first << std::endl;
+	// 	int count = 1;
+	// 	std::vector<Server>::const_iterator servIt = fdIT->second.begin();
+	// 	for (servIt; servIt != fdIT->second.end(); ++servIt)
+	// 	{
+	// 		std::cout << "server[" << count << "]:" << std::endl;
+	// 		(*servIt).print_all_directives();
+	// 		count++;
+	// 	}
+	// }
+	// // just to ckeck REMOVE IT
+
+	settingListeners();
 }
 
 WebServer::~WebServer() {
-    if(!this->_servers.empty()) {
-        for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it) {
-            const std::vector<int>& server_fd_list = it->get_sock_fd();
-            for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); ++fdIt){
-                close(*fdIt);
-            }
-        }
-    }
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, it->first, 0);
+		close(it->first);
+	}
+	this->_fdToServers.clear();
 }
 
-void WebServer::nonBlocking(const int &fd) {
-    int flags;
-    int status;
+void WebServer::creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers)
+{
+	std::map<std::string, std::vector<Server>>::const_iterator mapIt = groupServers.begin();
+	for (mapIt; mapIt != groupServers.end(); ++mapIt)
+	{
+		size_t lastColonsPos = mapIt->first.find_last_of(":");
+		std::string host = mapIt->first.substr(0, lastColonsPos);
+		std::string port = mapIt->first.substr(lastColonsPos + 1);
 
-    flags = fcntl(fd, F_GETFL, 0);
-    if(flags == -1)
-        throw std::runtime_error("Error: fcntl()");
+		struct addrinfo	hints;
+		struct addrinfo	*result;
+		struct addrinfo	*rp;
+		int				status;
+		int				sock_fd = -1;
 
-    flags |= O_NONBLOCK;
-    status = fcntl(fd, F_SETFL, flags);
-    if(status == -1)
-        throw std::runtime_error("Error: fcntl() status");
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags = AI_PASSIVE;
+		hints.ai_protocol = 0;
+
+		status = getaddrinfo(host.c_str(), port.c_str(), &hints, &result);
+		if (status != 0)
+		{
+			Logger::log(LOG_ERROR, gai_strerror(status));
+			throw std::runtime_error("Error: getaddrinfo()");
+		}
+
+		for (rp = result; rp != NULL; rp = rp->ai_next)
+		{
+			sock_fd = socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK , rp->ai_protocol);
+
+			if (sock_fd == -1)
+				continue;
+
+			int option = 1;
+			if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1)
+			{
+				Logger::log(LOG_ERROR, "setsockopt() failure");
+				close(sock_fd);
+				freeaddrinfo(result);
+				throw std::runtime_error("Error: setsockopt()");
+			}
+
+			if (bind(sock_fd, rp->ai_addr, rp->ai_addrlen) == 0)
+			{
+				this->_fdToServers[sock_fd] = mapIt->second;
+				std::vector<Server>::iterator it = _fdToServers[sock_fd].begin();
+				for (it; it != _fdToServers[sock_fd].end(); ++it)
+					(*it).set_host_port(mapIt->first);
+				break;
+			}
+		}
+		if (rp == NULL)
+		{
+			if(sock_fd != -1)
+				close(sock_fd);
+			Logger::log(LOG_ERROR, "Could not bind " + mapIt->first);
+		}
+		freeaddrinfo(result);
+	}
 }
 
-void WebServer::addToEpoll(const int &fd) {
-    struct epoll_event event;
-    event.data.fd = fd;
-    event.events = EPOLLIN | EPOLLET;
-    if (epoll_ctl(this->_epollFD, EPOLL_CTL_ADD, fd, &event) == -1)
-        throw std::runtime_error("epoll_ctl() failure");
+void WebServer::settingListeners() {
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		if (listen (it->first, SOMAXCONN) == -1)
+		{
+				std::string message = "listen() failure in: " + _fdToServers[it->first][0].get_host_port();
+				Logger::log(LOG_WARNING, message);
+				continue ;
+		}
+		std::string message = "Server is listening on: " + _fdToServers[it->first][0].get_host_port();
+		Logger::log(LOG_INFO, message);
+	}
+}
+
+void WebServer::addToEpoll(const int &fd, uint32_t events) {
+	struct epoll_event event;
+	event.data.fd = fd;
+	event.events = events;
+	if (epoll_ctl(this->_epollFD, EPOLL_CTL_ADD, fd, &event) == -1)
+		throw std::runtime_error("epoll_ctl() failure");
 }
 
 void WebServer::addToEpollServers(){
-    for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); ++it)
-    {
-        const std::vector<int>& server_fd_list = it->get_sock_fd();
-        for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); ++fdIt){
-            if(*fdIt != -1){
-                addToEpoll(*fdIt);
-            }
-        }
-    }
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		addToEpoll(it->first, EPOLLIN | EPOLLET);
+	}
 }
 
 int WebServer::isServerFDCheck(const int &i) const {
-    for (std::vector<Server>::const_iterator it = this->_servers.begin(); it != this->_servers.end(); ++it) {
-        const std::vector<int>& server_fd_list = it->get_sock_fd();
-        for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); ++fdIt){
-            if (i == *fdIt)
-                return (*fdIt);
-        }
-    }
-    return (-1);
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		if ( i == it->first)
+			return (it->first);
+	}
+	return (-1);
 }
 
-void WebServer::handleConnections() {
-    struct epoll_event events[MAX_EVENTS];
-    char buf[BUF_SIZE];
+void WebServer::acceptConnection(int *serverFd)
+{
+	struct sockaddr_storage peer_addr;
+	socklen_t peer_addr_len = sizeof(peer_addr);
+
+	int newSockFD = accept(*serverFd, (struct sockaddr *) &peer_addr, &peer_addr_len);
+	if (newSockFD == -1)
+	{
+		Logger::log(LOG_WARNING, "accept() failure");
+		return ;
+	}
+	addToEpoll (newSockFD, EPOLLIN); // tirar EPOLLET por serem sockets não bloqueantes
+	//criar client, que vai ter um vector<Servers> usar a instancia de ResponseBuilder por enquanto:
+	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
+	if (it != this->_fdToServers.end())
+        _conections[newSockFD] = it->second;
+	else
+		throw std::runtime_error("Server socket fd not found!");
+	std::ostringstream oss;
+	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
+	Logger::log(LOG_INFO, oss.str().c_str());
+}
+
+void WebServer::handleConnections()
+{
+	struct epoll_event events[MAX_EVENTS];
+
     ResponseBuilder response;
 
-    while (true)
-    {
-        int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
-        if (totalFD == -1)
-            throw std::runtime_error("epoll_wait() failure");
+	while (true)
+	{
+		int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
+		if (totalFD == -1)
+			throw std::runtime_error("epoll_wait() failure");
 
-        for (int i = 0; i < totalFD; i++)
-        {
-            int isServerFD = isServerFDCheck(events[i].data.fd);
-            if (isServerFD != -1)
-            {
-                while (true)
-                {
-                    struct sockaddr_storage peer_addr;
-                    socklen_t peer_addr_len = sizeof(peer_addr);
+		for (int i = 0; i < totalFD; i++)
+		{
+			int done = 0;
 
-                    int newSockFD = accept(isServerFD, (struct sockaddr *) &peer_addr, &peer_addr_len);
-                    if (newSockFD == -1)
-                    {
-                        if (errno == EAGAIN || errno == EWOULDBLOCK )
-                            break ;
-                        else
-                        {
-                            Logger::log(LOG_WARNING, "accept() failure");
-                            break;
-                        }
-                    }
-                    nonBlocking(newSockFD);
-                    addToEpoll (newSockFD);
-                }
-            }
-            else
-            {
-                int done = 0;
+			int isServerFD = isServerFDCheck(events[i].data.fd);
+			if (isServerFD != -1)
+				acceptConnection(&isServerFD);
+			else
+			{
+				char buf[BUF_SIZE];
+				memset(buf, 0, BUF_SIZE);
+				std::string request;
 
-                while (true)
-                {
-                    memset(buf, 0, BUF_SIZE);
-                    ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
-
-                    if (bread == -1)
-                    {
-                        if (errno != EAGAIN)
-                        {
-                            Logger::log(LOG_WARNING, "read() failure");
-                            done = 1;
-                        }
-                        break ;
-                    }
-                    else if (bread == 0)
-                    {
-                        done = 1;
-                        break ;
-                    }
-                    response.buildResponse(events[i].data.fd, this->_servers, buf);
-                    std::vector<char> responseString = response.getResponse();
-                    write(events[i].data.fd, responseString.data(), responseString.size());
-                }
-                if (done)
-                    close(events[i].data.fd);
-            }
-        }
-    }
+				while (true)
+				{
+					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
+					if (bread <= 0)
+					{
+						std::cout << "li tudo bread ==" << bread<< std::endl;
+						done = 1;
+						break ;
+					}
+					std::string tmp (buf, bread);
+					Logger::log(LOG_WARNING, "tmp:\n" + tmp);
+					request += tmp;
+					Logger::log(LOG_WARNING, "resquest\n" + request);
+					memset(buf, 0, BUF_SIZE);
+					if (bread < BUF_SIZE)
+						break;
+				}
+				Logger::log(LOG_WARNING, "resquest2:\n" + request);
+				response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
+				std::cout<<"aqui1" <<std::endl;
+				std::vector<char> responseString = response.getResponse();
+				std::cout<<"aqui2" <<std::endl;
+				std::cout << responseString.data() << std::endl;
+				write(events[i].data.fd, responseString.data(), responseString.size());
+				done = 1;
+				if (done)
+				{
+					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
+					close(events[i].data.fd);
+				}
+			}
+		}
+	}
 }
 
 void WebServer::run() {
-    for (std::vector<Server>::iterator it = this->_servers.begin(); it != this->_servers.end(); it++)
-    {
-        const std::vector<int>& server_fd_list = it->get_sock_fd();
-        const std::vector<Listen>& server_listeners = it->get_listeners();
-        std::vector<Listen>::const_iterator listenIt = server_listeners.begin();
-        for (std::vector<int>::const_iterator fdIt = server_fd_list.begin(); fdIt != server_fd_list.end(); fdIt++, listenIt++){
-            if(*fdIt == -1)
-                continue;
+	this->_epollFD = epoll_create1(0);
+	if (this->_epollFD == -1)
+		throw std::runtime_error("epoll_create() failure");
 
-            nonBlocking(*fdIt);
-
-            if(listen(*fdIt, SOMAXCONN) == -1) {
-                std::string message = "liste() failure in: " + listenIt->host + ":" + listenIt->port;
-                Logger::log(LOG_WARNING, message);
-                continue ;
-            }
-            std::string message = "Server is listening on: " + listenIt->host + ":" + listenIt->port;
-            Logger::log(LOG_INFO, message);
-        }
-    }
-
-    this->_epollFD = epoll_create1(0);
-    if (this->_epollFD == -1)
-        throw std::runtime_error("epoll_create() failure");
-
-    addToEpollServers();
-    handleConnections();
+	addToEpollServers();
+	handleConnections();
 }
