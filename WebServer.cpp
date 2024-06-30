@@ -184,14 +184,15 @@ void WebServer::acceptConnection(int *serverFd)
 
 void WebServer::handleConnections()
 {
-	struct epoll_event events[MAX_EVENTS];
-	char buf[BUF_SIZE];
+    struct epoll_event events[MAX_EVENTS];
+    char buf[BUF_SIZE];
+    ResponseBuilder response;
 
-	while (true)
-	{
-		int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
-		if (totalFD == -1)
-			throw std::runtime_error("epoll_wait() failure");
+    while (true)
+    {
+        int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
+        if (totalFD == -1)
+            throw std::runtime_error("epoll_wait() failure");
 
 		for (int i = 0; i < totalFD; i++)
 		{
@@ -204,17 +205,15 @@ void WebServer::handleConnections()
 
 				while (true)
 				{
-					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
-
+					ssize_t bread = read(events[i].data.fd, buf, sizeof(buf));
 					if (bread <= 0)
 					{
 						done = 1;
 						break ;
 					}
-					std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, world!";
-					write(events[i].data.fd, response.c_str(), response.length());
-					done = 1;
-					break ;
+					response.buildResponse(events[i].data.fd, this->_servers, buf);
+                    std::vector<char> responseString = response.getResponse();
+                    write(events[i].data.fd, responseString.data(), responseString.size());
 				}
 				if (done)
 				{
@@ -231,6 +230,6 @@ void WebServer::run() {
 	if (this->_epollFD == -1)
 		throw std::runtime_error("epoll_create() failure");
 
-	addToEpollServers();
-	handleConnections();
+    addToEpollServers();
+    handleConnections();
 }

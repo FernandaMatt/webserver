@@ -19,7 +19,6 @@ enum httpMethod
 	DELETE
 };
 
-
 // STRUCTS
 
 # include <iostream>
@@ -36,7 +35,7 @@ typedef struct httpRequest
 	std::string host;
 	std::string port;
 	std::string body;
-	std::string statusCode;
+	int statusCode;
 
 	void printRequest()
 	{
@@ -52,7 +51,6 @@ typedef struct httpRequest
 		std::cout << BLUE << "Status Code: " << RST << statusCode << std::endl;
 	}
 }				httpRequest;
-
 
 #define MAX_EVENTS 10
 #define BUF_SIZE 1024

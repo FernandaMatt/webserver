@@ -35,19 +35,18 @@ class Server {
         void    set_server_name(std::string server_name);
         void    set_index(std::string index);
         void    set_error_page(std::string error_page);
-        void    set_methods(std::string methods);
         void    set_location(Location &location);
         void    set_host_port(const std::string &hostPort);
         // void    set_sock_fd(); //create and bind
 
         //getters
         const std::vector<Listen>&  get_listeners() const;
-        std::string                 get_root();
+        std::string&                get_root();
         long                        get_client_max_body_size(); //in bytes
-        std::string                 get_autoindex();
-        std::vector<std::string>    get_server_name();
-        std::vector<std::string>    get_index();
-        std::map<int, std::string>  get_error_pages();
+        std::string&                get_autoindex();
+        std::vector<std::string>&   get_server_name();
+        std::vector<std::string>&   get_index();
+        std::map<int, std::string>& get_error_pages();
         std::string                 get_error_page_path(int error_code);
         std::vector<std::string>    get_methods();
         std::vector<Location>       get_location();
@@ -70,7 +69,6 @@ class Server {
         std::vector<std::string>    _server_name;
         std::vector<std::string>    _index;
         std::map<int, std::string>  _error_pages;
-        std::vector<std::string>    _methods;
         std::vector<Location>       _locations;
         std::string                 _host_port;
 
