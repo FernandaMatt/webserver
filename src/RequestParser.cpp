@@ -108,12 +108,6 @@ std::map<std::string, std::string> RequestParser::getQueryVariables(std::string 
         pos = query.find("&");
     }
     queryVariables[query.substr(0, query.find("="))] = query.substr(query.find("=") + 1);
-    //print queryVariables
-    std::map<std::string, std::string>::iterator it = queryVariables.begin();
-    for (it; it != queryVariables.end(); ++it)
-    {
-        std::cout << "key: " << it->first << " value: " << it->second << std::endl;
-    }
     return queryVariables;
 }
 
