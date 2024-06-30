@@ -69,6 +69,9 @@ class ResponseBuilder {
         void setCandidateServers(std::vector<Server> servers);
         void setRequest(char *request);
     	void delegateRequest();
+        void processGET();
+        void processPOST();
+        void processDELETE();
         bool isFile(std::string path);
         bool isDirectory(std::string path);
         bool pathIsFile();
@@ -82,4 +85,6 @@ class ResponseBuilder {
         void searchRoot();
         void searchAlias();
         bool checkAutoIndex(std::string &path);
+        bool isCGI();
+        void processCGI();
 };

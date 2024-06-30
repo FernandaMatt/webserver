@@ -14,6 +14,7 @@
 # include <string.h>
 # include "../Logger.hpp"
 # include "error_pages.hpp"
+# include "./utils/MimeTypes.hpp"
 
 struct FileInfo {
     std::string name;
