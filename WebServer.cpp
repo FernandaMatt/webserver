@@ -236,6 +236,7 @@ void WebServer::handleConnections()
 				if (done)
 				{
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
+                    _conections.erase(events[i].data.fd);
 					close(events[i].data.fd);
 				}
 			}
