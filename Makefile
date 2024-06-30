@@ -1,6 +1,10 @@
-NAME = listener
+NAME = webserv
 
-SRCS = $(wildcard *.cpp)
+SRCS =	$(wildcard *.cpp) \
+		src/RequestParser.cpp \
+		src/ResponseBuilder.cpp \
+		src/Response.cpp \
+		src/utils/MimeTypes.cpp
 
 CC = c++
 
@@ -17,10 +21,10 @@ $(NAME): $(OBJS)
 	$(CC) $(FLAGS) $(OBJS) -o $(NAME)
 
 clean:
-	rm -rf *.o
+	rm -rf *.o src/*.o
 
 fclean:
-	rm -rf *.o $(NAME)
+	rm -rf *.o src/*.o src/utils/*.o $(NAME)
 
 re: fclean all
 
