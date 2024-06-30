@@ -11,6 +11,10 @@ Location::~Location() {
 //setters
 
 void    Location::set_path(std::string path) {
+    if (path.find(' ') != std::string::npos)
+        throw std::runtime_error("Error in config file: invalid number of arguments in location path");
+    if (!path.empty() && path.size() != 1 && path[path.size() - 1] == '/')
+        path.erase(path.size() - 1);
     _path = path;
 }
 
@@ -21,6 +25,8 @@ void    Location::set_root(std::string root) {
         throw std::runtime_error("Error in config file: duplicate directive root");
     if (root.find(' ') != std::string::npos)
         throw std::runtime_error("Error in config file: invalid number of arguments in root");
+    if (!root.empty() && root.size() != 1 && root[root.size() - 1] == '/')
+        root.erase(root.size() - 1);
     _root = root;
 }
 
@@ -28,14 +34,18 @@ void    Location::set_index(std::string index) {
     size_t pos = 0;
     while (pos < index.size()) {
         size_t space_pos = index.find(' ', pos);
+        std::string token;
         if (space_pos != std::string::npos){
-            _index.push_back(index.substr(pos, space_pos - pos));
+            token = index.substr(pos, space_pos - pos);
             pos = space_pos + 1;
         }
         else {
-            _index.push_back(index.substr(pos));
-            break;
+            token = index.substr(pos);
+            pos = index.size();
         }
+        if (!token.empty() && token.size() != 1 && token[0] == '/')
+            token = token.substr(1);
+        _index.push_back(token);
     }
 }
 
@@ -56,6 +66,8 @@ void    Location::set_alias(std::string alias) {
         throw std::runtime_error("Error in config file: duplicate directive alias");
     if (alias.find(' ') != std::string::npos)
         throw std::runtime_error("Error in config file: invalid number of arguments in alias");
+    if (!alias.empty() && alias.size() != 1 && alias[alias.size() - 1] == '/')
+        alias.erase(alias.size() - 1);
     _alias = alias;
 }
 
@@ -127,6 +139,14 @@ void    Location::set_error_page(std::string error_page) {
         _error_pages[error_code] = error_path;
 }
 
+void    Location::set_upload_path(std::string upload_path) {
+    if (!_upload_path.empty())
+        throw std::runtime_error("Error in config file: duplicate directive upload_path");
+    if (upload_path.find(' ') != std::string::npos)
+        throw std::runtime_error("Error in config file: invalid number of arguments in upload_path");
+    _upload_path = upload_path;
+}
+
 void    Location::set_cgi_path(std::string cgi_path) {
     if (!_cgi_path.empty())
         throw std::runtime_error("Error in config file: duplicate directive cgi_path");
@@ -144,32 +164,34 @@ void    Location::set_cgi_ext(std::string cgi_ext) {
 }
 
 //getters
-std::string                 Location::get_path() {return _path;}
+std::string&    Location::get_path() {return _path;}
 
-std::string                 Location::get_root() {return _root;}
+std::string&    Location::get_root() {return _root;}
 
-std::string                 Location::get_alias() {return _alias;}
+std::string&    Location::get_alias() {return _alias;}
 
-long                        Location::get_client_max_body_size() {return _client_max_body_size;}
+long    Location::get_client_max_body_size() {return _client_max_body_size;}
 
-std::string                 Location::get_autoindex() {return _autoindex;}
+std::string&    Location::get_autoindex() {return _autoindex;}
 
-std::vector<std::string>    Location::get_index() {return _index;}
+std::vector<std::string>&   Location::get_index() {return _index;}
 
-std::vector<std::string>    Location::get_methods() {return _methods;}
+std::vector<std::string>&   Location::get_methods() {return _methods;}
 
-std::map<int, std::string>  Location::get_error_pages() {return _error_pages;}
+std::map<int, std::string>& Location::get_error_pages() {return _error_pages;}
 
-std::string                 Location::get_error_page_path(int error_code) {
+std::string     Location::get_error_page_path(int error_code) {
     std::map<int, std::string>::iterator it = _error_pages.find(error_code);
     if (it == _error_pages.end())
         return NULL;
     return it->second;
 }
 
-std::string                 Location::get_cgi_path() {return _cgi_path;}
+std::string&    Location::get_upload_path() {return _upload_path;}
 
-std::string                 Location::get_cgi_ext() {return _cgi_ext;}
+std::string&    Location::get_cgi_path() {return _cgi_path;}
+
+std::string&    Location::get_cgi_ext() {return _cgi_ext;}
 
 void    Location::print_all_directives() {
 
@@ -192,7 +214,25 @@ void    Location::print_all_directives() {
     for (it = _error_pages.begin(); it != _error_pages.end(); it++) {
         std::cout << "      error_page [ " << it->first << " ]: " << it->second << std::endl;
     }
+    std::cout << "      upload_path: " << _upload_path << std::endl;
     std::cout << "      cgi_path: " << _cgi_path << std::endl;
     std::cout << "      cgi_ext: " << _cgi_ext << std::endl;
     std::cout << std::endl;
+}
+std::string Location::search_index_file(std::string path) {
+    struct stat buffer;
+    std::string index_file_path;
+    std::string file_name; //move manipulation of '/' to server_parser
+
+    for (size_t i = 0; i < _index.size(); i++) {
+        file_name = _index[i];
+        if (file_name[0] == '/')
+            file_name = file_name.substr(1);
+        if (file_name[file_name.size() - 1] == '/')
+            file_name = file_name.substr(0, file_name.size() - 1);
+        index_file_path = path + '/' +file_name;
+        if (stat(index_file_path.c_str(), &buffer) == 0)
+            return index_file_path;
+    }
+    return "";
 }
