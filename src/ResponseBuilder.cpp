@@ -294,9 +294,15 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::st
             // processCGI();
             return;
         }
-        defineLocation();
-        checkMethodAndBodySize();
-        searchLocation(); //check if there is an index file in the location, if not throw ForbiddenException
+        if (_parsedRequest.method == GET)
+            processGET();
+        else if (_parsedRequest.method == POST)
+            processPOST();
+        else if (_parsedRequest.method == DELETE)
+            processDELETE();
+        else {
+            throw MethodNotAllowedException();
+        }
     }
     catch (ForbiddenException &e) {
         defineErrorPage(403);

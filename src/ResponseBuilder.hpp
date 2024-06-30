@@ -64,7 +64,6 @@ class ResponseBuilder {
 		Response _response;
 		Server _server;
         Location _location;
-        bool _loaded = false;
 
         void setFd(int fd);
         void setCandidateServers(std::vector<Server> servers);

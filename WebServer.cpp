@@ -224,19 +224,13 @@ void WebServer::handleConnections()
 						break ;
 					}
 					std::string tmp (buf, bread);
-					Logger::log(LOG_WARNING, "tmp:\n" + tmp);
 					request += tmp;
-					Logger::log(LOG_WARNING, "resquest\n" + request);
 					memset(buf, 0, BUF_SIZE);
 					if (bread < BUF_SIZE)
 						break;
 				}
-				Logger::log(LOG_WARNING, "resquest2:\n" + request);
 				response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
-				std::cout<<"aqui1" <<std::endl;
 				std::vector<char> responseString = response.getResponse();
-				std::cout<<"aqui2" <<std::endl;
-				std::cout << responseString.data() << std::endl;
 				write(events[i].data.fd, responseString.data(), responseString.size());
 				done = 1;
 				if (done)
