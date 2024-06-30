@@ -59,6 +59,7 @@ WebServer::~WebServer() {
 		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, it->first, 0);
 		close(it->first);
 	}
+	this->_fdToServers.clear();
 }
 
 void WebServer::creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers)
@@ -165,7 +166,7 @@ int WebServer::isServerFDCheck(const int &i) const {
 	return (-1);
 }
 
-void WebServer::acceptConnection(int *serverFd)
+void WebServer::acceptConnection(int *serverFd, ResponseBuilder response)
 {
 	struct sockaddr_storage peer_addr;
 	socklen_t peer_addr_len = sizeof(peer_addr);
@@ -176,7 +177,14 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT | EPOLLET);
+	addToEpoll (newSockFD, EPOLLIN); // tirar EPOLLET por serem sockets não bloqueantes
+	//criar client, que vai ter um vector<Servers> usar a instancia de ResponseBuilder por enquanto:
+	response.setFd(newSockFD);
+	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
+	if (it != this->_fdToServers.end())
+		response.setCandidateServers(it->second);
+	else
+		throw std::runtime_error("Server socket fd not found!");
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
@@ -184,39 +192,53 @@ void WebServer::acceptConnection(int *serverFd)
 
 void WebServer::handleConnections()
 {
-    struct epoll_event events[MAX_EVENTS];
-    char buf[BUF_SIZE];
-    ResponseBuilder response;
+	struct epoll_event events[MAX_EVENTS];
 
-    while (true)
-    {
-        int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
-        if (totalFD == -1)
-            throw std::runtime_error("epoll_wait() failure");
+	while (true)
+	{
+		int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
+		if (totalFD == -1)
+			throw std::runtime_error("epoll_wait() failure");
 
 		for (int i = 0; i < totalFD; i++)
 		{
+			ResponseBuilder response;
+			int done = 0;
+
 			int isServerFD = isServerFDCheck(events[i].data.fd);
 			if (isServerFD != -1)
-				acceptConnection(&isServerFD);
+				acceptConnection(&isServerFD, response);
 			else
 			{
-				int done = 0;
+				char buf[BUF_SIZE];
+				memset(buf, 0, BUF_SIZE);
+				std::string request;
 
 				while (true)
 				{
-					ssize_t bread = read(events[i].data.fd, buf, sizeof(buf));
+					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
 					if (bread <= 0)
 					{
+						std::cout << "li tudo bread ==" << bread<< std::endl;
 						done = 1;
 						break ;
 					}
-					// response.buildResponse(events[i].data.fd, this->_servers, buf);
-                    std::vector<char> responseString = response.getResponse();
-                    write(events[i].data.fd, responseString.data(), responseString.size());
-					done = 1;
-					break ;
+					std::string tmp (buf, bread);
+					Logger::log(LOG_WARNING, "tmp:\n" + tmp);
+					request += tmp;
+					Logger::log(LOG_WARNING, "resquest\n" + request);
+					memset(buf, 0, BUF_SIZE);
+					if (bread < BUF_SIZE)
+						break;
 				}
+				Logger::log(LOG_WARNING, "resquest2:\n" + request);
+				response.buildResponse(request.c_str());
+				std::cout<<"aqui1" <<std::endl;
+				std::vector<char> responseString = response.getResponse();
+				std::cout<<"aqui2" <<std::endl;
+				std::cout << responseString.data() << std::endl;
+				write(events[i].data.fd, responseString.data(), responseString.size());
+				done = 1;
 				if (done)
 				{
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
@@ -232,6 +254,6 @@ void WebServer::run() {
 	if (this->_epollFD == -1)
 		throw std::runtime_error("epoll_create() failure");
 
-    addToEpollServers();
-    handleConnections();
+	addToEpollServers();
+	handleConnections();
 }

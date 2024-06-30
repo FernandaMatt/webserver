@@ -7,6 +7,22 @@ Server::Server() {
 Server::~Server() {
 }
 
+Server& Server::operator=(const Server &obj){
+	if (this != &obj )
+	{
+		_listeners = obj._listeners;
+		_root = obj._root;
+		_client_max_body_size = obj._client_max_body_size;
+		_autoindex = obj._autoindex;
+		_server_name = obj._server_name;
+		_index = obj._server_name;
+		_error_pages = obj._error_pages;
+		_locations = obj._locations;
+		_host_port = obj._host_port;
+	}
+	return(*this);
+}
+
 //setters
 void    Server::set_listeners(std::string listen) {
 	Listen listener;

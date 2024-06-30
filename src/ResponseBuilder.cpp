@@ -14,7 +14,7 @@ void ResponseBuilder::setCandidateServers(std::vector<Server> servers) {
     _candidateServers = servers;
 }
 
-void ResponseBuilder::setRequest(char *request) {
+void ResponseBuilder::setRequest(const char *request) {
     _request = request;
 }
 
@@ -31,19 +31,22 @@ void ResponseBuilder::printInitializedAttributes() {
 }
 
 void ResponseBuilder::delegateRequest() {
-    //EXCLUDE LINES AFTER >>>>
-    std::vector<Server> filteredServers;
-    for (std::vector<Server>::iterator itServer = _candidateServers.begin(); itServer != _candidateServers.end(); ++itServer) {
-        std::vector<Listen> hostPort = itServer->get_listeners();
-        for (std::vector<Listen>::iterator itHostPort = hostPort.begin(); itHostPort != hostPort.end(); ++itHostPort) {
-            if (itHostPort->port == _parsedRequest.port) {
-                filteredServers.push_back(*itServer);
-            }
-        }
-    }
-    _candidateServers = filteredServers;
-    //EXCLUDE LINES BEFORE <<<<
+    // //EXCLUDE LINES AFTER >>>>
+    // std::vector<Server> filteredServers;
+    // for (std::vector<Server>::iterator itServer = _candidateServers.begin(); itServer != _candidateServers.end(); ++itServer) {
+    //     std::vector<Listen> hostPort = itServer->get_listeners();
+    //     for (std::vector<Listen>::iterator itHostPort = hostPort.begin(); itHostPort != hostPort.end(); ++itHostPort) {
+    //         if (itHostPort->port == _parsedRequest.port) {
+    //             filteredServers.push_back(*itServer);
+    //         }
+    //     }
+    // }
+    // _candidateServers = filteredServers;
+    // //EXCLUDE LINES BEFORE <<<<
+    std::cout << "teste" << std::endl;
 	for (std::vector<Server>::iterator itServer = _candidateServers.begin(); itServer != _candidateServers.end(); ++itServer) {
+        std::cout << "entrei" <<std::endl;
+        itServer->print_all_directives();
 		std::vector<std::string> servernames = itServer->get_server_name();
 		for (std::vector<std::string>::iterator itServerName = servernames.begin(); itServerName != servernames.end(); ++itServerName) {
 			if (*itServerName == _parsedRequest.host) {
@@ -189,7 +192,7 @@ void ResponseBuilder::searchRoot() {
         return;
     }
     if (isDirectory(file_path)) {
-        
+
         std::string index_file_path = _location.search_index_file(file_path);
         if (index_file_path == "") {
             throw ForbiddenException();
@@ -207,12 +210,12 @@ void ResponseBuilder::searchLocation() {
     searchRoot();
 }
 
-void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *request) {
+void ResponseBuilder::buildResponse(const char *request) {
 
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
-        setFd(fd);
-        setCandidateServers(servers);
+        // setFd(fd);
+        // setCandidateServers(servers);
         setRequest(request);
         _parsedRequest = RequestParser::parseRequest(_request);
         if (_parsedRequest.statusCode != 200) {
@@ -220,6 +223,7 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *r
             return;
         }
         delegateRequest();
+        std::cout<<"aqui1" <<std::endl;
         if (pathIsFile()) //check if the path is a file using the server root and index
             return;
         defineLocation();

@@ -6,7 +6,7 @@
 #include "../Server.hpp"
 #include "RequestParser.hpp"
 #include "../Logger.hpp"
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <fstream>
 #include <sstream>
 #include "Response.hpp"
@@ -17,7 +17,7 @@ class ResponseBuilder {
 		~ResponseBuilder();
 
 		void printInitializedAttributes();
-        void buildResponse(int fd, std::vector<Server> servers, char *request);
+        void buildResponse(const char *request);
 
         const std::vector<char> getResponse() const;
 
@@ -56,18 +56,19 @@ class ResponseBuilder {
                 }
         };
 
+        void setFd(int fd);
+        void setCandidateServers(std::vector<Server> servers);
+
 	private:
 		int _fd;
 		std::vector<Server> _candidateServers;
-		char *_request;
+		const char *_request;
 		httpRequest _parsedRequest;
 		Response _response;
 		Server _server;
         Location _location;
 
-        void setFd(int fd);
-        void setCandidateServers(std::vector<Server> servers);
-        void setRequest(char *request);
+        void setRequest(const char *request);
     	void delegateRequest();
         bool isFile(std::string path);
         bool pathIsFile();

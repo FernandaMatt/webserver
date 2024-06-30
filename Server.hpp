@@ -22,10 +22,12 @@ struct Listen {
     std::string host;
     std::string port;
 };
+
 class Server {
     public:
         Server();
         ~Server();
+        Server &operator = (const Server&obj);
 
         //setters
         void    set_listeners(std::string listen);

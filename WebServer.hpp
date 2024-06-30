@@ -24,7 +24,7 @@ class WebServer {
 		void	settingListeners();
 		void	addToEpollServers( );
 		void	addToEpoll(const int &fd, uint32_t events);
-		void	acceptConnection(int *serverFd);
+		void	acceptConnection(int *serverFd, ResponseBuilder response);
 		void	handleConnections( );
 		int		isServerFDCheck(const int &i) const;
 
