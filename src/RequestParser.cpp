@@ -25,9 +25,12 @@ httpRequest RequestParser::parseRequest(std::string request)
 	httpRequest req;
 
 	parsing_request = request;
+    req.queryVariables.clear();
 	try {
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
+        if (parsing_request[0] == '?')
+            req.queryVariables = getQueryVariables(parsing_request);
 		req.version = getVersion(parsing_request);
 		req.headers = getHeaders(parsing_request);
 		req.body = getBody(parsing_request);
@@ -72,10 +75,40 @@ std::string RequestParser::getPath(std::string &parsing_request)
 	url = parsing_request.substr(0, pos);
 	if (url[0] != '/') //Not a bad request? Check behavior described in Discord by Maragao !
 		throw std::invalid_argument("Bad request");
+    if (url.find("?") != std::string::npos) {
+        pos = url.find("?");
+        url = url.substr(0, pos);
+        pos = parsing_request.find("?") - 1;
+        // parsing_request = parsing_request.substr(pos);
+    }
     if (url.size() > 1 && url[url.size() - 1] == '/')
         url = url.substr(0, url.size() - 1);
 	parsing_request = parsing_request.substr(pos + 1);
 	return url;
+}
+
+std::map<std::string, std::string> RequestParser::getQueryVariables(std::string parsing_request)
+{
+    std::map<std::string, std::string> queryVariables;
+    std::string query;
+    size_t pos;
+
+    if(parsing_request.empty())
+        throw std::invalid_argument("Bad request");
+    pos = parsing_request.find(" ");
+    if (pos == std::string::npos)
+        throw std::invalid_argument("Bad request");
+    query = parsing_request.substr(1, pos);
+    parsing_request = parsing_request.substr(pos + 1);
+    pos = query.find("&");
+    while (pos != std::string::npos)
+    {
+        queryVariables[query.substr(0, query.find("="))] = query.substr(query.find("=") + 1, query.find("&") - query.find("=") - 1);
+        query = query.substr(query.find("&") + 1);
+        pos = query.find("&");
+    }
+    queryVariables[query.substr(0, query.find("="))] = query.substr(query.find("=") + 1);
+    return queryVariables;
 }
 
 std::string RequestParser::getVersion(std::string &parsing_request)
@@ -146,8 +179,8 @@ std::string RequestParser::getBody(std::string &parsing_request)
 	if(parsing_request.empty()){
 		return "";
 	}
-	if (parsing_request.substr(parsing_request.size() - 2) != std::string("\r\n")) //TEST: é necessário a request terminar com \r\n, e realmente só um é desconsiderado ? Testar com nginx e insomnia
-		throw std::invalid_argument("Bad request");
+	// if (parsing_request.substr(parsing_request.size() - 2) != std::string("\r\n")) //TEST: é necessário a request terminar com \r\n, e realmente só um é desconsiderado ? Testar com nginx e insomnia
+	// 	throw std::invalid_argument("Bad request");
 	body = parsing_request.substr(0, parsing_request.size() - 2);
 	parsing_request.clear();
 	return body;

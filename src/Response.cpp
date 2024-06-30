@@ -8,21 +8,10 @@ Response::Response()
 Response::~Response() {}
 
 std::string Response::getContentType(const std::string& filePath) {
-    std::map<std::string, std::string> contentTypes = {
-        {".html", "text/html"},
-        {".css", "text/css"},
-        {".png", "image/png"},
-        {".jpg", "image/jpeg"},
-        {".jpeg", "image/jpeg"},
-        {".gif", "image/gif"},
-        {".pdf", "application/pdf"}
-    };
+    MimeTypes mimeTypes;
     std::string::size_type idx = filePath.rfind('.');
     if (idx != std::string::npos) {
-        std::string extension = filePath.substr(idx);
-        if (contentTypes.find(extension) != contentTypes.end()) {
-            return contentTypes[extension];
-        }
+        return (mimeTypes.getType(filePath.substr(idx)));
     }
     return "application/octet-stream";
 }

@@ -242,6 +242,39 @@ void ResponseBuilder::defineErrorPage(int statusCode) {
     }
 }
 
+bool ResponseBuilder::isCGI() {
+    // std::string path = _parsedRequest.path;
+    // std::string cgi_extension = _server.get_cgi_extension();
+    // if (path.length() < cgi_extension.length())
+    //     return false;
+    // if (path.substr(path.length() - cgi_extension.length()) == cgi_extension)
+    //     return true;
+    return false;
+}
+
+void ResponseBuilder::processGET() {
+    //check if the path is a cgi file, if it is, execute the cgi
+    if (pathIsFile()) //check if the path is a file using the server root and index
+        return;
+    defineLocation();
+    if (_response.loaded)
+        return;
+    checkMethodAndBodySize();
+    searchLocation(); //check if there is an index file in the location, if not throw ForbiddenException
+}
+
+void ResponseBuilder::processPOST() {
+    //check if the path ia a cgi script
+    //if it is, execute the cgi
+    //if it is not, check that the location accepts POST
+    //save the content to a specific path
+}
+
+void ResponseBuilder::processDELETE() {
+    //check if the path is a file
+    //delete the file
+}
+
 void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::string request) {
 
     try {
@@ -257,11 +290,11 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::st
             return;
         }
         delegateRequest();
-        if (pathIsFile()) //check if the path is a file using the server root and index
+        if (isCGI()) {
+            // processCGI();
             return;
+        }
         defineLocation();
-        if (_response.loaded)
-            return;
         checkMethodAndBodySize();
         searchLocation(); //check if there is an index file in the location, if not throw ForbiddenException
     }
