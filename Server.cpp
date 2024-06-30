@@ -60,8 +60,6 @@ void    Server::set_root(std::string root) {
         throw std::runtime_error("Error in config file: duplicate directive root");
     if (root.find(' ') != std::string::npos)
         throw std::runtime_error("Error in config file: invalid number of arguments in root");
-    if (!root.empty() && root.size() != 1 && root[root.size() - 1] == '/')
-        root.erase(root.size() - 1);
     _root = root;
 }
 
@@ -124,18 +122,14 @@ void    Server::set_index(std::string index) {
     size_t pos = 0;
     while (pos < index.size()) {
         size_t space_pos = index.find(' ', pos);
-        std::string token;
         if (space_pos != std::string::npos){
-            token = index.substr(pos, space_pos - pos);
+            _index.push_back(index.substr(pos, space_pos - pos));
             pos = space_pos + 1;
         }
         else {
-            token = index.substr(pos);
-            pos = index.size();
+            _index.push_back(index.substr(pos));
+            break;
         }
-        if (!token.empty() && token.size() != 1 && token[0] == '/')
-            token = token.substr(1);
-        _index.push_back(token);
     }
 }
 
@@ -164,6 +158,27 @@ void    Server::set_error_page(std::string error_page) {
         it->second = error_path;
     else
         _error_pages[error_code] = error_path;
+}
+
+void    Server::set_methods(std::string methods) {
+    if (!_methods.empty())
+        throw std::runtime_error("Error in config file: duplicate directive allow_methods");
+    for (size_t pos = 0; pos < methods.size(); pos++) {
+        size_t space_pos = methods.find(' ', pos);
+        std::string method;
+        if (space_pos != std::string::npos){
+            method = methods.substr(pos, space_pos - pos);
+            pos = space_pos;
+        }
+        else {
+            method = methods.substr(pos);
+            pos = methods.size();
+        }
+        if (method != "GET" && method != "POST" && method != "DELETE" &&
+            method != "get" && method != "post" && method != "delete") {
+            throw std::runtime_error("Error in config file: invalid methods" + method); }
+        _methods.push_back(method);
+    }
 }
 
 void    Server::set_location(Location &location) {
@@ -224,35 +239,39 @@ void    Server::set_sock_fd() {
 
 //getters
 
-const std::vector<Listen>&  Server::get_listeners() const {return _listeners;}
+const std::vector<Listen>&     Server::get_listeners() const {return _listeners;}
 
-std::string&    Server::get_root() {return _root;}
+std::string     Server::get_root() {return _root;}
 
 long    Server::get_client_max_body_size() {return _client_max_body_size;}
 
-std::string&    Server::get_autoindex() {return _autoindex;}
+std::string    Server::get_autoindex() {return _autoindex;}
 
-std::vector<std::string>&   Server::get_server_name() {return _server_name;}
+std::vector<std::string>     Server::get_server_name() {return _server_name;}
 
-std::vector<std::string>&   Server::get_index() {return _index;}
+std::vector<std::string>    Server::get_index() {return _index;}
 
-std::map<int, std::string>& Server::get_error_pages() {return _error_pages;}
+std::map<int, std::string>  Server::get_error_pages() {return _error_pages;}
 
-std::string     Server::get_error_page_path(int error_code) {
+std::string                 Server::get_error_page_path(int error_code) {
     std::map<int, std::string>::iterator it = _error_pages.find(error_code);
     if (it == _error_pages.end())
         return NULL;
     return it->second;
 }
 
-std::vector<Location>&  Server::get_location() {return _locations;}
+std::vector<std::string>    Server::get_methods() {return _methods;}
+
+std::vector<Location>    Server::get_location() {return _locations;}
 
 const std::vector<int>& Server::get_sock_fd() const {return _sock_fd;}
+
+//methods
 
 void    Server::check_duplicate_location(Location &location) {
     for(size_t i = 0; i < _locations.size(); i++) {
         if (location.get_path() == _locations[i].get_path())
-            throw std::runtime_error("Error in config file: duplicate location path " + location.get_path());
+            throw std::runtime_error("Error in config file: duplicate location path");
     }
 }
 
@@ -273,21 +292,11 @@ void    Server::set_default_directives(){
         set_autoindex("off");
     if (_client_max_body_size == -1)
         set_client_max_body_size("1m");
+    if (_methods.empty())
+        set_methods("GET POST DELETE");
     if (_root.empty())
         set_root("/");
 
-    bool found = false;
-    for (size_t i = 0; i < _locations.size(); i++) {
-        if (_locations[i].get_path() == "/")
-            found = true;
-    }
-    if (found == false) {
-        Location location;
-        location.set_path("/");
-        this->set_location(location);
-    }
-
-    //set default directives for locations
     for (size_t i = 0; i < _locations.size(); i++) {
 
         if (_locations[i].get_root().empty() && _locations[i].get_alias().empty())
@@ -309,7 +318,13 @@ void    Server::set_default_directives(){
             _locations[i].set_index(index);
         }
         if (_locations[i].get_methods().empty()) {
-            _locations[i].set_methods("GET");
+            std::string methods;
+            for (size_t j = 0; j < _methods.size(); j++) {
+                methods += _methods[j];
+                if (j < _methods.size() - 1)
+                    methods += " ";
+            }
+            _locations[i].set_methods(methods);
         }
         for (std::map<int, std::string>::iterator it = _error_pages.begin(); it != _error_pages.end(); it++) {
             std::map<int, std::string> error_page_map = _locations[i].get_error_pages();
@@ -318,12 +333,6 @@ void    Server::set_default_directives(){
                 ss << it->first;
                 _locations[i].set_error_page(ss.str() + " " + it->second);
             }
-        }
-        if (_locations[i].get_upload_path().empty()) {
-            if (!(_locations[i].get_root().empty()))
-                _locations[i].set_upload_path(_locations[i].get_root());
-            else
-                _locations[i].set_upload_path(_locations[i].get_alias()); 
         }
     }
 }
@@ -347,6 +356,11 @@ void    Server::print_all_directives() {
     std::cout << "   index [ size = " << _index.size() << " ]: ";
     for (size_t i = 0; i < _index.size(); i++) {
         std::cout << _index[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "   methods [ size = " << _methods.size() << " ]: ";
+    for (size_t i = 0; i < _methods.size(); i++) {
+        std::cout << _methods[i] << " ";
     }
     std::cout << std::endl;
     std::map<int, std::string>::iterator it;
