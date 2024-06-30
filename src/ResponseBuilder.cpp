@@ -63,6 +63,12 @@ void ResponseBuilder::defineLocation() {
             return;
         }
     }
+    std::string full_path = _server.get_root() + _parsedRequest.path; //check if path starts w/ / -> see behavior described by Maragao
+    if (isDirectory(full_path)) {
+        if (checkAutoIndex(full_path))
+            return;
+        throw ForbiddenException();
+    }
     throw NoLocationException();
 }
 
@@ -81,7 +87,7 @@ bool ResponseBuilder::isBodySizeAllowed() {
     return true;
 }
 
-void ResponseBuilder::checkMethodAndBodySize() {
+void ResponseBuilder::checkMethodAndBodySize() { //NEED TO MAKE MORE TESTES to check if the verification are correct
     std::string method;
     if (_parsedRequest.method == GET) { //stop using Enum for GET, POST, DELETE, and only use std::string
        method = "GET";
@@ -103,7 +109,7 @@ void ResponseBuilder::checkMethodAndBodySize() {
     }
 }
 
-bool isDirectory(std::string path) {
+bool ResponseBuilder::isDirectory(std::string path) {
     struct stat pathStat;
     if (stat(path.c_str(), &pathStat) != 0) {
         return false;
@@ -134,21 +140,21 @@ bool ResponseBuilder::pathIsFile() {
         return true;
     }
 
-    std::string file_name;
-    std::string index_file_path;
-    std::vector<std::string> index = _server.get_index();
-    for (size_t i = 0; i < index.size(); i++) {
-        file_name = index[i];
-        if (file_name[0] == '/')
-            file_name = file_name.substr(1);
-        if (file_name[file_name.size() - 1] == '/')
-            file_name = file_name.substr(0, file_name.size() - 1);
-        index_file_path = file_path + '/' +file_name;
-        if (isFile(index_file_path)) {
-            _response.loadFromFile(index_file_path);
-            return true;
-        }
-    }
+    // std::string file_name;
+    // std::string index_file_path;
+    // std::vector<std::string> index = _server.get_index();
+    // for (size_t i = 0; i < index.size(); i++) {
+    //     file_name = index[i];
+    //     if (file_name[0] == '/')
+    //         file_name = file_name.substr(1);
+    //     if (file_name[file_name.size() - 1] == '/')
+    //         file_name = file_name.substr(0, file_name.size() - 1);
+    //     index_file_path = file_path + '/' +file_name;
+    //     if (isFile(index_file_path)) {
+    //         _response.loadFromFile(index_file_path);
+    //         return true;
+    //     }
+    // }
     return false;
 }
 
@@ -160,8 +166,15 @@ void ResponseBuilder::loadResponseFromFile(std::string path) {
     _response.loadFromFile(path);
 }
 
+bool ResponseBuilder::checkAutoIndex(std::string &path) {
+    if (_location.get_path() != "" && _location.get_autoindex() != "on"
+        || _location.get_path() == "" && _server.get_autoindex() != "on")
+        return false;
+    _response.loadAutoIndex(path);
+    return true;
+}
+
 void ResponseBuilder::searchAlias() {
-    //search alias
     std::string alias = _location.get_alias();
     if (alias == "") {
         Logger::log(LOG_WARNING, "No alias found in location.");
@@ -169,6 +182,8 @@ void ResponseBuilder::searchAlias() {
     }
     std::string index_file_path = _location.search_index_file(alias);
     if (index_file_path == "") {
+        if (checkAutoIndex(alias))
+            return;
         throw ForbiddenException();
     }
     loadResponseFromFile(index_file_path);
@@ -184,7 +199,7 @@ void ResponseBuilder::searchRoot() {
     if (path[0] == '/')
         path = path.substr(1);
     std::string file_path = location_root + path;
-    if (isFile(file_path)) { //check if the path comes with a file indicated -> !! Need to confirm if the file is returned or the error 403 (access not allowed)
+    if (isFile(file_path)) {
         loadResponseFromFile(file_path);
         return;
     }
@@ -192,6 +207,8 @@ void ResponseBuilder::searchRoot() {
         
         std::string index_file_path = _location.search_index_file(file_path);
         if (index_file_path == "") {
+            if (checkAutoIndex(file_path))
+                return;
             throw ForbiddenException();
         }
         file_path += "/" + index_file_path;
@@ -207,6 +224,24 @@ void ResponseBuilder::searchLocation() {
     searchRoot();
 }
 
+void ResponseBuilder::defineErrorPage(int statusCode) {
+    std::map<int, std::string> error_pages = _server.get_error_pages();
+    std::string error_page_path = error_pages[statusCode];
+    if (error_page_path == "") {
+        Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(statusCode) + ". Loading default error page.");
+        _response.loadDefaultErrorPage(statusCode);
+    }
+    error_page_path = _server.get_root() + error_page_path;
+    try {
+        loadResponseFromFile(error_page_path);
+    }
+    catch (ForbiddenException &e) { //STOP USING EXCEPTIONS FOR FLOW CONTROL <<<< This catch is inside another catch, which is not good
+        Logger::log(LOG_WARNING, "Custom Error page set, but file not found. Loading default error page.");
+        _response.loadDefaultErrorPage(statusCode);
+        return;
+    }
+}
+
 void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *request) {
 
     try {
@@ -214,6 +249,8 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *r
         setFd(fd);
         setCandidateServers(servers);
         setRequest(request);
+        _response.loaded= false;
+        _location.set_path("");
         _parsedRequest = RequestParser::parseRequest(_request);
         if (_parsedRequest.statusCode != 200) {
             _response.loadDefaultErrorPage(_parsedRequest.statusCode);
@@ -223,27 +260,29 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, char *r
         if (pathIsFile()) //check if the path is a file using the server root and index
             return;
         defineLocation();
+        if (_response.loaded)
+            return;
         checkMethodAndBodySize();
         searchLocation(); //check if there is an index file in the location, if not throw ForbiddenException
     }
     catch (ForbiddenException &e) {
-        _response.loadDefaultErrorPage(403);
+        defineErrorPage(403);
         return;
     }
     catch (NoLocationException &e) {
-        _response.loadDefaultErrorPage(404); //create function to check if path exists; look for server index in directory path; checkif autoindex is on; define if it should be 404 or 403 << should not be done in searchLocation() ?
+        defineErrorPage(404);
         return;
     }
     catch (MethodNotAllowedException &e) {
-        _response.loadDefaultErrorPage(405);
+        defineErrorPage(405);
         return;
     }
     catch (BodySizeExceededException &e) {
-        _response.loadDefaultErrorPage(413);
+        defineErrorPage(413);
         return;
     }
     catch (InternalServerErrorException &e) {
-        _response.loadDefaultErrorPage(500);
+        defineErrorPage(500);
         return;
     }
     catch (std::exception &e){
