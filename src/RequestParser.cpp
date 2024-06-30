@@ -73,7 +73,7 @@ std::string RequestParser::getPath(std::string &parsing_request)
 	if (pos == std::string::npos)
 		throw std::invalid_argument("Bad request");
 	url = parsing_request.substr(0, pos);
-	if (url[0] != '/') //Not a bad request? Check behavior described in Discord by Maragao !
+	if (url[0] != '/') //Not a bad request? Check behavior described in Discord by Maragao !!
 		throw std::invalid_argument("Bad request");
     if (url.find("?") != std::string::npos) {
         pos = url.find("?");
