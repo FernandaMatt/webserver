@@ -17,6 +17,7 @@ class WebServer {
 	private:
 		int					_epollFD;
 		std::map<int, std::vector<Server>> _fdToServers;
+		std::map<int, std::vector<Server>> _conections;
 
 		WebServer();
 
@@ -24,7 +25,7 @@ class WebServer {
 		void	settingListeners();
 		void	addToEpollServers( );
 		void	addToEpoll(const int &fd, uint32_t events);
-		void	acceptConnection(int *serverFd, ResponseBuilder response);
+		void	acceptConnection(int *serverFd);
 		void	handleConnections( );
 		int		isServerFDCheck(const int &i) const;
 

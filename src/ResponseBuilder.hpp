@@ -6,7 +6,7 @@
 #include "../Server.hpp"
 #include "RequestParser.hpp"
 #include "../Logger.hpp"
-#include <sys/stat.h>
+#include <sys/stat.h> 
 #include <fstream>
 #include <sstream>
 #include "Response.hpp"
@@ -17,7 +17,7 @@ class ResponseBuilder {
 		~ResponseBuilder();
 
 		void printInitializedAttributes();
-        void buildResponse(const char *request);
+        void buildResponse(int fd, std::vector<Server> servers, std::string request);
 
         const std::vector<char> getResponse() const;
 
@@ -56,23 +56,23 @@ class ResponseBuilder {
                 }
         };
 
-        void setFd(int fd);
-        void setCandidateServers(std::vector<Server> servers);
-
 	private:
 		int _fd;
 		std::vector<Server> _candidateServers;
-		const char *_request;
+		std::string _request;
 		httpRequest _parsedRequest;
 		Response _response;
 		Server _server;
         Location _location;
+        bool _loaded = false;
 
-        void setRequest(const char *request);
+        void setFd(int fd);
+        void setCandidateServers(std::vector<Server> servers);
+        void setRequest(std::string request);
     	void delegateRequest();
         bool isFile(std::string path);
+        bool isDirectory(std::string path);
         bool pathIsFile();
-        // bool pathPointsIndexFile();
         void defineLocation();
         void checkMethodAndBodySize();
         void searchLocation();
@@ -82,4 +82,5 @@ class ResponseBuilder {
         void defineErrorPage(int error_code);
         void searchRoot();
         void searchAlias();
+        bool checkAutoIndex(std::string &path);
 };

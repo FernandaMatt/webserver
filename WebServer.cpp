@@ -166,7 +166,7 @@ int WebServer::isServerFDCheck(const int &i) const {
 	return (-1);
 }
 
-void WebServer::acceptConnection(int *serverFd, ResponseBuilder response)
+void WebServer::acceptConnection(int *serverFd)
 {
 	struct sockaddr_storage peer_addr;
 	socklen_t peer_addr_len = sizeof(peer_addr);
@@ -179,10 +179,9 @@ void WebServer::acceptConnection(int *serverFd, ResponseBuilder response)
 	}
 	addToEpoll (newSockFD, EPOLLIN); // tirar EPOLLET por serem sockets não bloqueantes
 	//criar client, que vai ter um vector<Servers> usar a instancia de ResponseBuilder por enquanto:
-	response.setFd(newSockFD);
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
-		response.setCandidateServers(it->second);
+        _conections[newSockFD] = it->second;
 	else
 		throw std::runtime_error("Server socket fd not found!");
 	std::ostringstream oss;
@@ -194,6 +193,8 @@ void WebServer::handleConnections()
 {
 	struct epoll_event events[MAX_EVENTS];
 
+    ResponseBuilder response;
+
 	while (true)
 	{
 		int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
@@ -202,12 +203,11 @@ void WebServer::handleConnections()
 
 		for (int i = 0; i < totalFD; i++)
 		{
-			ResponseBuilder response;
 			int done = 0;
 
 			int isServerFD = isServerFDCheck(events[i].data.fd);
 			if (isServerFD != -1)
-				acceptConnection(&isServerFD, response);
+				acceptConnection(&isServerFD);
 			else
 			{
 				char buf[BUF_SIZE];
@@ -232,7 +232,7 @@ void WebServer::handleConnections()
 						break;
 				}
 				Logger::log(LOG_WARNING, "resquest2:\n" + request);
-				response.buildResponse(request.c_str());
+				response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
 				std::cout<<"aqui1" <<std::endl;
 				std::vector<char> responseString = response.getResponse();
 				std::cout<<"aqui2" <<std::endl;
