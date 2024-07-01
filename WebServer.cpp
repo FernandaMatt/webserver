@@ -229,10 +229,19 @@ void WebServer::handleConnections()
 					if (bread < BUF_SIZE)
 						break;
 				}
-				response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
-				std::vector<char> responseString = response.getResponse();
-				write(events[i].data.fd, responseString.data(), responseString.size());
-				done = 1;
+                httpRequest req = RequestParser::parseRequest(request);
+                req.printRequest();
+                if (req.type == "CGI")
+                {
+                    write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
+                    done = 1;
+                }
+                if (req.type == "STATIC") {
+                    response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
+                    std::vector<char> responseString = response.getResponse();
+                    write(events[i].data.fd, responseString.data(), responseString.size());
+                    done = 1;
+                }
 				if (done)
 				{
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);

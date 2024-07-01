@@ -29,8 +29,11 @@ httpRequest RequestParser::parseRequest(std::string request)
 	try {
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
-        if (parsing_request[0] == '?')
+        req.type = getResourceType(req.path);
+        if (parsing_request[0] == '?') {
+            req.queryString = getQueryString(parsing_request);
             req.queryVariables = getQueryVariables(parsing_request);
+        }
 		req.version = getVersion(parsing_request);
 		req.headers = getHeaders(parsing_request);
 		req.body = getBody(parsing_request);
@@ -85,6 +88,25 @@ std::string RequestParser::getPath(std::string &parsing_request)
         url = url.substr(0, url.size() - 1);
 	parsing_request = parsing_request.substr(pos + 1);
 	return url;
+}
+
+std::string RequestParser::getResourceType(std::string url)
+{
+    if (url.size() > 4 && url.substr(url.size() - 4) == ".php")
+        return "CGI";
+    return "STATIC";
+}
+
+std::string RequestParser::getQueryString(std::string &parsing_request)
+{
+    size_t pos;
+
+    if(parsing_request.empty())
+        throw std::invalid_argument("Bad request");
+    pos = parsing_request.find(" ");
+    if (pos == std::string::npos)
+        throw std::invalid_argument("Bad request");
+    return parsing_request.substr(1, pos);
 }
 
 std::map<std::string, std::string> RequestParser::getQueryVariables(std::string &parsing_request)

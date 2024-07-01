@@ -19,6 +19,12 @@ enum httpMethod
 	DELETE
 };
 
+enum resourceType
+{
+    CGI,
+    STATIC
+};
+
 // STRUCTS
 
 # include <iostream>
@@ -33,15 +39,28 @@ typedef struct httpRequest
 	std::string version;
 	std::map<std::string, std::string> headers;
 	std::map<std::string, std::string> queryVariables;
+    std::string queryString;
 	std::string host;
 	std::string port;
 	std::string body;
+    std::string type;
 	int statusCode;
 
 	void printRequest()
 	{
 		std::cout << BLUE << "Method: " << RST << method << std::endl;
 		std::cout << BLUE << "Path: " << RST << path << std::endl;
+        std::cout << BLUE << "Resource Type: " << RST << type << std::endl;
+        // if (type == CGI)
+        //     std::cout << "CGI";
+        // else if (type == STATIC)
+        //     std::cout << "STATIC";
+        // else
+        //     std::cout << "UNKNOWN";
+        // std::cout << std::endl;
+        std::cout << BLUE << "Query String: " << RST << queryString << std::endl;
+        for (std::map<std::string, std::string>::iterator it = queryVariables.begin(); it != queryVariables.end(); it++)
+            std::cout << "\t" << it->first << ": " << it->second << std::endl;
 		std::cout << BLUE << "Version: " << RST << version << std::endl;
 		std::cout << BLUE << "Headers: " << RST << std::endl;
 		for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); it++)

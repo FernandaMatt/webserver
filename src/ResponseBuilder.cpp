@@ -285,6 +285,7 @@ void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::st
         _response.loaded= false;
         _location.set_path("");
         _parsedRequest = RequestParser::parseRequest(_request);
+        _parsedRequest.printRequest();
         if (_parsedRequest.statusCode != 200) {
             _response.loadDefaultErrorPage(_parsedRequest.statusCode);
             return;
