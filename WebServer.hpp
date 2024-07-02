@@ -28,6 +28,7 @@ class WebServer {
 		void	acceptConnection(int *serverFd);
 		void	handleConnections( );
 		int		isServerFDCheck(const int &i) const;
+		Server	delegateRequest(std::vector<Server> candidateServers, std::string host);
 
 	public:
 		WebServer(const std::vector<Server> &parsedServers);
