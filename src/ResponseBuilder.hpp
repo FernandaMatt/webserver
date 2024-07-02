@@ -17,7 +17,7 @@ class ResponseBuilder {
 		~ResponseBuilder();
 
 		void printInitializedAttributes();
-        void buildResponse(int fd, std::vector<Server> servers, std::string request);
+        void buildResponse(Server server, httpRequest request);
 
         const std::vector<char> getResponse() const;
 
@@ -57,18 +57,11 @@ class ResponseBuilder {
         };
 
 	private:
-		int _fd;
-		std::vector<Server> _candidateServers;
-		std::string _request;
 		httpRequest _parsedRequest;
 		Response _response;
 		Server _server;
         Location _location;
 
-        void setFd(int fd);
-        void setCandidateServers(std::vector<Server> servers);
-        void setRequest(std::string request);
-    	void delegateRequest();
         void processGET();
         void processPOST();
         void processDELETE();

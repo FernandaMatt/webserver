@@ -6,53 +6,10 @@ ResponseBuilder::ResponseBuilder() {
 ResponseBuilder::~ResponseBuilder() {
 }
 
-void ResponseBuilder::setFd(int fd) {
-    _fd = fd;
-}
-
-void ResponseBuilder::setCandidateServers(std::vector<Server> servers) {
-    _candidateServers = servers;
-}
-
-void ResponseBuilder::setRequest(std::string request) {
-    _request = request;
-}
-
 void ResponseBuilder::printInitializedAttributes() {
-	std::cout << GRN <<"fd: " << RST << _fd << std::endl;
 	std::cout << GRN << "servers: " << RST << std::endl;
-	for (std::vector<Server>::iterator it = _candidateServers.begin(); it != _candidateServers.end(); ++it) {
-		it->print_all_directives();
-		std::cout << BLUE <<"-------------" << RST << std::endl ;
-	}
-	std::cout << GRN << "request: " << RST << _request << std::endl;
 	std::cout << GRN << "parsedRequest: " << RST << std::endl;
 	_parsedRequest.printRequest();
-}
-
-void ResponseBuilder::delegateRequest() {
-    //EXCLUDE LINES AFTER >>>>
-    std::vector<Server> filteredServers;
-    for (std::vector<Server>::iterator itServer = _candidateServers.begin(); itServer != _candidateServers.end(); ++itServer) {
-        std::vector<Listen> hostPort = itServer->get_listeners();
-        for (std::vector<Listen>::iterator itHostPort = hostPort.begin(); itHostPort != hostPort.end(); ++itHostPort) {
-            if (itHostPort->port == _parsedRequest.port) {
-                filteredServers.push_back(*itServer);
-            }
-        }
-    }
-    _candidateServers = filteredServers;
-    //EXCLUDE LINES BEFORE <<<<
-	for (std::vector<Server>::iterator itServer = _candidateServers.begin(); itServer != _candidateServers.end(); ++itServer) {
-		std::vector<std::string> servernames = itServer->get_server_name();
-		for (std::vector<std::string>::iterator itServerName = servernames.begin(); itServerName != servernames.end(); ++itServerName) {
-			if (*itServerName == _parsedRequest.host) {
-				_server = *itServer;
-				return;
-			}
-		}
-	}
-	_server = _candidateServers[0];
 }
 
 void ResponseBuilder::defineLocation() {
@@ -275,23 +232,16 @@ void ResponseBuilder::processDELETE() {
     //delete the file
 }
 
-void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::string request) {
+void ResponseBuilder::buildResponse(Server server, httpRequest request) {
 
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
-        setFd(fd);
-        setCandidateServers(servers);
-        setRequest(request);
+        _server = server;
         _response.loaded= false;
         _location.set_path("");
-        _parsedRequest = RequestParser::parseRequest(_request);
+        _parsedRequest = request;
         if (_parsedRequest.statusCode != 200) {
             _response.loadDefaultErrorPage(_parsedRequest.statusCode);
-            return;
-        }
-        delegateRequest();
-        if (isCGI()) {
-            // processCGI();
             return;
         }
         if (_parsedRequest.method == GET)

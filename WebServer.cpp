@@ -62,6 +62,18 @@ WebServer::~WebServer() {
 	this->_fdToServers.clear();
 }
 
+Server WebServer::delegateRequest(std::vector<Server> candidateServers, std::string host) {
+	for (std::vector<Server>::iterator itServer = candidateServers.begin(); itServer != candidateServers.end(); ++itServer) {
+		std::vector<std::string> servernames = itServer->get_server_name();
+		for (std::vector<std::string>::iterator itServerName = servernames.begin(); itServerName != servernames.end(); ++itServerName) {
+			if (*itServerName == host) {
+				return *itServer;
+			}
+		}
+	}
+	return candidateServers[0];
+}
+
 void WebServer::creatingAndBinding(const std::map<std::string, std::vector<Server>> &groupServers)
 {
 	std::map<std::string, std::vector<Server>>::const_iterator mapIt = groupServers.begin();
@@ -229,10 +241,18 @@ void WebServer::handleConnections()
 					if (bread < BUF_SIZE)
 						break;
 				}
-				response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
-				std::vector<char> responseString = response.getResponse();
-				write(events[i].data.fd, responseString.data(), responseString.size());
-				done = 1;
+                httpRequest req = RequestParser::parseRequest(request);
+                if (req.type == "CGI")
+                {
+                    write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
+                    done = 1;
+                }
+                if (req.type == "STATIC") {
+                    response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+                    std::vector<char> responseString = response.getResponse();
+                    write(events[i].data.fd, responseString.data(), responseString.size());
+                    done = 1;
+                }
 				if (done)
 				{
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
