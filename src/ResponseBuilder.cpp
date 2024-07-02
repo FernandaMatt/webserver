@@ -6,26 +6,16 @@ ResponseBuilder::ResponseBuilder() {
 ResponseBuilder::~ResponseBuilder() {
 }
 
-void ResponseBuilder::setFd(int fd) {
-    _fd = fd;
-}
-
 void ResponseBuilder::setCandidateServers(std::vector<Server> servers) {
     _candidateServers = servers;
 }
 
-void ResponseBuilder::setRequest(std::string request) {
-    _request = request;
-}
-
 void ResponseBuilder::printInitializedAttributes() {
-	std::cout << GRN <<"fd: " << RST << _fd << std::endl;
 	std::cout << GRN << "servers: " << RST << std::endl;
 	for (std::vector<Server>::iterator it = _candidateServers.begin(); it != _candidateServers.end(); ++it) {
 		it->print_all_directives();
 		std::cout << BLUE <<"-------------" << RST << std::endl ;
 	}
-	std::cout << GRN << "request: " << RST << _request << std::endl;
 	std::cout << GRN << "parsedRequest: " << RST << std::endl;
 	_parsedRequest.printRequest();
 }
@@ -275,16 +265,14 @@ void ResponseBuilder::processDELETE() {
     //delete the file
 }
 
-void ResponseBuilder::buildResponse(int fd, std::vector<Server> servers, std::string request) {
+void ResponseBuilder::buildResponse(std::vector<Server> servers, httpRequest request) {
 
     try {
         Logger::log(LOG_INFO, "Request" + _parsedRequest.path + " received, building response");
-        setFd(fd);
         setCandidateServers(servers);
-        setRequest(request);
         _response.loaded= false;
         _location.set_path("");
-        _parsedRequest = RequestParser::parseRequest(_request);
+        _parsedRequest = request;
         _parsedRequest.printRequest();
         if (_parsedRequest.statusCode != 200) {
             _response.loadDefaultErrorPage(_parsedRequest.statusCode);

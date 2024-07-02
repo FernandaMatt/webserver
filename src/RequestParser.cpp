@@ -30,10 +30,10 @@ httpRequest RequestParser::parseRequest(std::string request)
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
         req.type = getResourceType(req.path);
-        if (parsing_request[0] == '?') {
-            req.queryString = getQueryString(parsing_request);
-            req.queryVariables = getQueryVariables(parsing_request);
-        }
+        // if (parsing_request[0] == '?') {
+        //     req.queryString = getQueryString(parsing_request);
+        //     req.queryVariables = getQueryVariables(parsing_request);
+        // }
 		req.version = getVersion(parsing_request);
 		req.headers = getHeaders(parsing_request);
 		req.body = getBody(parsing_request);

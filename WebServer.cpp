@@ -237,7 +237,7 @@ void WebServer::handleConnections()
                     done = 1;
                 }
                 if (req.type == "STATIC") {
-                    response.buildResponse(events[i].data.fd, _conections[events[i].data.fd], request);
+                    response.buildResponse(_conections[events[i].data.fd], req);
                     std::vector<char> responseString = response.getResponse();
                     write(events[i].data.fd, responseString.data(), responseString.size());
                     done = 1;
