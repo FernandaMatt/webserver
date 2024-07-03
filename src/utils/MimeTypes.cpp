@@ -127,3 +127,14 @@ std::string MimeTypes::getType(std::string extension) {
     return _mimes[extension];
   return "application/octet-stream";
 };
+
+std::string MimeTypes::getExtension(std::string content_type) {
+  
+  for (std::map<std::string, std::string>::iterator it = _mimes.begin(); it != _mimes.end(); it++) {
+    if (it->second == content_type) {
+      return it->first;   
+    }
+  }
+  return ".bin";
+
+}

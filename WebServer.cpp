@@ -242,6 +242,8 @@ void WebServer::handleConnections()
 						break;
 				}
                 httpRequest req = RequestParser::parseRequest(request);
+				//std::cout << "request = " << request << std::endl;
+				req.printRequest();
                 if (req.type == "CGI")
                 {
                     write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
@@ -250,6 +252,7 @@ void WebServer::handleConnections()
                 if (req.type == "STATIC") {
                     response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
                     std::vector<char> responseString = response.getResponse();
+					std::cout << "--- RESPONSE ---" << std::endl << response.get_response() << std::endl;
                     write(events[i].data.fd, responseString.data(), responseString.size());
                     done = 1;
                 }

@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 	try {
 		parser = new Parser(config_file);
 		Logger::log(LOG_INFO, "parse of configuration file completed");
-		// parser->print_servers_directives();
+		//parser->print_servers_directives();
 		webServer= new WebServer(parser->get_servers());
 		webServer->run();
 	}

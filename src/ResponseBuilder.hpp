@@ -18,6 +18,7 @@ class ResponseBuilder {
 
 		void printInitializedAttributes();
         void buildResponse(Server server, httpRequest request);
+        Response& get_response();
 
         const std::vector<char> getResponse() const;
 
@@ -56,6 +57,13 @@ class ResponseBuilder {
                 }
         };
 
+        class BadRequestException : public std::exception {
+            public:
+               virtual const char* what() const throw() {
+                    return "Bad Request";
+                }
+        };
+
 	private:
 		httpRequest _parsedRequest;
 		Response _response;
@@ -80,4 +88,15 @@ class ResponseBuilder {
         bool checkAutoIndex(std::string &path);
         bool isCGI();
         void processCGI();
+
+//post
+        bool    isChunkedBody();
+        bool    isMultipartBody();
+        void    postChunkedBody();
+        void    postMultipartBody();
+        void    postCompleteBody();
+        std::string getContentType();
+        std::string getFileName(std::string const& content_type);
+        void    writeToFile(std::string& filename, std::vector<char>& decoded_body);
+
 };
