@@ -9,6 +9,9 @@
 # include "Server.hpp"
 # include "defines.hpp"
 # include "src/ResponseBuilder.hpp"
+# include "src/RequestParser.hpp"
+# include "src/cgi/HandleCGI.hpp"
+
 
 class Server;
 class Logger;

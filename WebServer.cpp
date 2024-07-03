@@ -15,40 +15,7 @@ WebServer::WebServer(const std::vector<Server> &parsedServers) {
 		}
 	}
 
-	// // just to ckeck REMOVE IT
-	// std::map<std::string, std::vector<Server>>::const_iterator checkIt = groupServers.begin();
-	// for ( checkIt; checkIt != groupServers.end(); ++checkIt)
-	// {
-	// 	std::cout << "for key: " << checkIt->first << std::endl;
-	// 	int count = 1;
-	// 	std::vector<Server>::const_iterator servIt = checkIt->second.begin();
-	// 	for (servIt; servIt != checkIt->second.end(); ++servIt)
-	// 	{
-	// 		std::cout << "server[" << count << "]:" << std::endl;
-	// 		(*servIt).print_all_directives();
-	// 		count++;
-	// 	}
-	// }
-	// // just to ckeck REMOVE IT
-
 	creatingAndBinding(groupServers);
-
-	// // just to ckeck REMOVE IT
-	// std::map<int, std::vector<Server>>::const_iterator fdIT = this->_fdToServers.begin();
-	// for ( fdIT; fdIT != this->_fdToServers.end(); ++fdIT)
-	// {
-	// 	std::cout << "for fd: " << fdIT->first << std::endl;
-	// 	int count = 1;
-	// 	std::vector<Server>::const_iterator servIt = fdIT->second.begin();
-	// 	for (servIt; servIt != fdIT->second.end(); ++servIt)
-	// 	{
-	// 		std::cout << "server[" << count << "]:" << std::endl;
-	// 		(*servIt).print_all_directives();
-	// 		count++;
-	// 	}
-	// }
-	// // just to ckeck REMOVE IT
-
 	settingListeners();
 }
 
@@ -189,7 +156,7 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	addToEpoll (newSockFD, EPOLLIN); // tirar EPOLLET por serem sockets não bloqueantes
+	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT ); // tirar EPOLLET por serem sockets não bloqueantes
 	//criar client, que vai ter um vector<Servers> usar a instancia de ResponseBuilder por enquanto:
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
@@ -244,8 +211,12 @@ void WebServer::handleConnections()
                 httpRequest req = RequestParser::parseRequest(request);
                 if (req.type == "CGI")
                 {
-                    write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
-                    done = 1;
+                    Logger::log(LOG_INFO, "CGI Request RECEIVED. Handle...." + request);
+					HandleCGI cgi(req);
+					std::string response = cgi.executeTest();
+					// std::string default_req_CGI ="HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
+                    write(events[i].data.fd, response.c_str(), response.size());
+					done = 1;
                 }
                 if (req.type == "STATIC") {
                     response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
