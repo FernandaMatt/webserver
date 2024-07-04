@@ -9,6 +9,7 @@
 #include <sys/stat.h> 
 #include <fstream>
 #include <sstream>
+#include <ctime>
 #include "Response.hpp"
 
 class ResponseBuilder {
@@ -96,7 +97,9 @@ class ResponseBuilder {
         void    postMultipartBody();
         void    postCompleteBody();
         std::string getContentType();
+        std::string getFileName(std::string const& filename, std::string const& content_type);
         std::string getFileName(std::string const& content_type);
+        std::string generateRandomFilename();
         void    writeToFile(std::string& filename, std::vector<char>& decoded_body);
 
 };

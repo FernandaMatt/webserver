@@ -354,7 +354,6 @@ void    Server::set_default_directives(){
 				if (!_locations[i].get_root().empty()) {
 					if (_locations[i].get_root()[_locations[i].get_root().size() - 1] != '/') {
 						std::string aux = _locations[i].get_root() + '/' + it->second;
-						//std::cout << aux << std::endl;
 						it->second.clear();
 						it->second = aux;
 					}
@@ -392,7 +391,7 @@ void    Server::set_default_directives(){
             else
                 _locations[i].set_upload_path(_locations[i].get_alias());
         }
-    }
+	}    
 }
 
 void    Server::print_all_directives() const {

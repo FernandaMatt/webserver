@@ -103,7 +103,7 @@ bool ResponseBuilder::pathIsFile() {
     // std::string index_file_path;
     // std::vector<std::string> index = _server.get_index();
     // for (size_t i = 0; i < index.size(); i++) {
-    //     file_name = index[i];
+    // file_name = index[i];
     //     if (file_name[0] == '/')
     //         file_name = file_name.substr(1);
     //     if (file_name[file_name.size() - 1] == '/')
@@ -190,7 +190,7 @@ void ResponseBuilder::defineErrorPage(int statusCode) {
         Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(statusCode) + ". Loading default error page.");
         _response.loadDefaultErrorPage(statusCode);
     }
-    error_page_path = _server.get_root() + error_page_path;
+    //error_page_path = _server.get_root() + error_page_path;
     try {
         loadResponseFromFile(error_page_path);
     }
@@ -294,24 +294,25 @@ void ResponseBuilder::processPOST() {
     //save the content to a specific path
     defineLocation();
     checkMethodAndBodySize();
-    std::string content_type;
-    std::string filename;
-    std::vector<char> decoded_body;
-    decoded_body.clear();
-    // if (isMultipartBody()) {
-    //     postMultipartBody();
-    // }
-    if (isChunkedBody()) {
+
+    if (isMultipartBody()) {
+        //std::cout << "is multipart" << std::endl;
+        postMultipartBody();
+    }
+    else if (isChunkedBody()) {
+        //std::cout << "is chunked" << std::endl;
         postChunkedBody();
     }
     else {
+        //std::cout << "is complete body" << std::endl;
         postCompleteBody();
     }
-    // std::ostringstream oss;
-    // oss << "Content-Length: 29\r\n";
-    // oss << "Content-Type: text/plain\r\n\r\n";
-    // _response.setHttpHeaders(oss.str());
-    // _response.setResponseContent("Upload realizado com sucesso!");
+    _response.setStatusMessage("HTTP/1.1 200 OK\r\n");
+    std::ostringstream oss;
+    oss << "Content-Length: 29\r\n";
+    oss << "Content-Type: text/plain\r\n\r\n";
+    _response.setHttpHeaders(oss.str());
+    _response.setResponseContent("Upload realizado com sucesso!");
 }
 
 bool    ResponseBuilder::isChunkedBody() {
@@ -333,10 +334,12 @@ bool    ResponseBuilder::isMultipartBody() {
 
 void   ResponseBuilder::postChunkedBody() {
     std::vector<char> file_content;
-    file_content.clear();
     std::string content_type = getContentType();
     std::string filename = getFileName(content_type);
     std::string::size_type pos = 0;
+
+    if (_parsedRequest.body.empty())
+        throw BadRequestException(); //invalid format
     while (pos < _parsedRequest.body.size()) {
         std::string::size_type end = _parsedRequest.body.find("\r\n", pos);
         if (end == std::string::npos)
@@ -352,95 +355,87 @@ void   ResponseBuilder::postChunkedBody() {
         if (pos + chunk_size > _parsedRequest.body.size())
             throw BadRequestException(); //Formato invalido
         file_content.insert(file_content.end(), _parsedRequest.body.begin() + pos, _parsedRequest.body.begin() + pos + chunk_size);
-        pos += chunk_size + 2;
-        if (pos > _parsedRequest.body.size())
-            throw BadRequestException(); //Formato invalido
+        pos += chunk_size;
+        if (pos + 2 > _parsedRequest.body.size() || _parsedRequest.body.substr(pos, 2) != "\r\n")
+            throw BadRequestException();
+        pos += 2;
     }
     writeToFile(filename, file_content);
 }
 
-// void   ResponseBuilder::postMultipartBody() {
-//     //find boundary
-//     if (_parsedRequest.headers.find("Content-Type") == _parsedRequest.headers.end())
-//         throw InternalServerErrorException();
-//     std::string content_type = _parsedRequest.headers.find("Content-Type")->second;
-//     size_t pos = content_type.find('=');
-//     if (pos == std::string::npos)
-//         throw InternalServerErrorException();
-//     std::string boundary = content_type.substr(pos + 1);
+void   ResponseBuilder::postMultipartBody() {
+    if (_parsedRequest.body.empty())
+        throw BadRequestException(); //invalid format
 
-//     pos = 0;
-//     while (pos < _parsedRequest.body.size()) {
-//         //set headers
-//         size_t part_start = _parsedRequest.body.find(boundary, pos);
-//         if (part_start == std::string::npos)
-//             break;
-//         part_start += boundary.size() + 2;
-//         //find end of headers
-//         size_t headers_end = _parsedRequest.body.find("\r\n\r\n", part_start);
-//         if (headers_end == std::string::npos)
-//             throw BadRequestException(); //invalid format
-//         std::string headers = _parsedRequest.body.substr(part_start, headers_end - part_start);
-//         part_start = headers_end + 4;
+//find boundary
+    std::string content_type = _parsedRequest.headers.find("Content-Type")->second;
+    size_t pos = content_type.find('=');
+    if (pos == std::string::npos)
+        throw InternalServerErrorException();
+    std::string boundary = content_type.substr(pos + 1);
 
-//         std::string filename;
-//         std::string content_type;
-//         //set part headers
-//         std::istringstream headers_stream(headers);
-//         std::string header;
-//         while (std::getline(headers_stream, header)) {
-//             if (header.find("Content-Disposition") != std::string::npos) {
-//                 size_t filename_pos = header.find("filename=");
-//                 if (filename_pos != std::string::npos) {
-//                     filename_pos += 10;
-//                     size_t filename_end = header.find("\"", filename_pos);
-//                     if (filename_end == std::string::npos)
-//                         throw BadRequestException(); //invalid format
-//                     filename = header.substr(filename_pos, filename_end - filename_pos);
-//                 }
-//             } else if (header.find("Content-Type") != std::string::npos) {
-//                 size_t content_type_pos = header.find(": ");
-//                 if (content_type_pos == std::string::npos)
-//                     throw BadRequestException(); //invalid format
-//                 content_type = header.substr(content_type_pos + 2);
-//             }
-
-//             //encontrar o final da parte
-//             size_t part_end = _parsedRequest.body.find(boundary, part_start);
-//             if (part_end == std::string::npos)
-//                 part_end = _parsedRequest.body.size();
-//             else
-//                 part_end -= 2;
-
-//             if (part_end < part_start)
-//                 throw BadRequestException(); //invalid format
-
-
-//             //add o conteudo no vetor
-//             if (!filename.empty() && !content_type.empty()) {
-//                 std::vector<char> file_content(_parsedRequest.body.begin() + part_start, _parsedRequest.body.begin() + part_end);
-//                 std::ofstream outfile(filename.c_str(), std::ios::out | std::ios::binary);
-//                 if (!outfile)
-//                     throw InternalServerErrorException();
-//                 outfile.write(&file_content[0], file_content.size());
-//                 outfile.close();
-//                 if (!outfile.good())
-//                     throw InternalServerErrorException();
-//                 std::cout << "filename = " << filename << " && content_type = " << content_type << std::endl;
-//             }
-//             pos = part_end + 2;
-//         }
-//     }
-// }
+    pos = 0;
+    while (pos < _parsedRequest.body.size()) {
+        //set headers
+        size_t part_start = _parsedRequest.body.find(boundary, pos);
+        if (part_start == std::string::npos)
+            break;
+        part_start += boundary.size() + 2;
+        //find end of headers
+        size_t headers_end = _parsedRequest.body.find("\r\n\r\n", part_start);
+        if (headers_end == std::string::npos)
+            break;
+        std::string headers = _parsedRequest.body.substr(part_start, headers_end - part_start);
+        part_start = headers_end + 4;
+        std::string filename;
+        std::string complete_filename;
+        std::string content_type;
+        //set part headers
+        std::istringstream headers_stream(headers);
+        std::string header;
+        while (std::getline(headers_stream, header)) {
+            if (header.find("Content-Disposition") != std::string::npos) {
+                size_t filename_pos = header.find("filename=");
+                if (filename_pos != std::string::npos) {
+                    filename_pos += 10;
+                    size_t filename_end = header.find("\"", filename_pos);
+                    if (filename_end == std::string::npos)
+                        throw BadRequestException(); //invalid format
+                    filename = header.substr(filename_pos, filename_end - filename_pos);
+                }
+            } else if (header.find("Content-Type") != std::string::npos) {
+                size_t content_type_pos = header.find(": ");
+                if (content_type_pos == std::string::npos)
+                    throw BadRequestException(); //invalid format
+                content_type = header.substr(content_type_pos + 2);
+            }
+            //encontrar o final da parte
+            size_t part_end = _parsedRequest.body.find(boundary, part_start);
+            if (part_end == std::string::npos)
+                part_end = _parsedRequest.body.size();
+            else
+                part_end -= 2;
+            if (part_end < part_start)
+                throw BadRequestException(); //invalid format
+            //add o conteudo no vetor
+            if (!filename.empty() && !content_type.empty()) {
+                complete_filename = getFileName(filename, content_type);
+                std::vector<char> file_content(_parsedRequest.body.begin() + part_start, _parsedRequest.body.begin() + part_end);
+                writeToFile(complete_filename, file_content);
+            }
+            pos = part_end + 2;
+        }
+    }
+}
 
 void   ResponseBuilder::postCompleteBody() {
+    if (_parsedRequest.body.empty())
+        throw BadRequestException(); //invalid format
     std::vector<char> file_content;
     file_content.reserve(_parsedRequest.body.size());
+    file_content.insert(file_content.end(), _parsedRequest.body.begin(), _parsedRequest.body.end());
     std::string content_type = getContentType();
     std::string filename = getFileName(content_type);
-    for (size_t i = 0; i < _parsedRequest.body.size(); i++) {
-        file_content.push_back(_parsedRequest.body[i]);
-    }
     writeToFile(filename, file_content);
 }
 
@@ -452,36 +447,87 @@ std::string  ResponseBuilder::getContentType() {
     return NULL;
 }
 
+std::string  ResponseBuilder::getFileName(std::string const& filename, std::string const& content_type) {
+    MimeTypes mimes;
+    std::string path;
+    std::string complete_path;
+    
+    if (!_location.get_upload_path().empty() && _location.get_upload_path()[0] != '/') {
+        if (!_location.get_root().empty())
+            path = _location.get_root() + '/' + _location.get_upload_path() + '/';
+        else
+            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';        
+    }
+    else
+        path = _location.get_upload_path() + '/';
+    
+    if (!isDirectory(path))
+        throw ForbiddenException();
+    
+    if (!filename.empty()) {
+        complete_path = path + filename;
+        if (!isFile(complete_path))
+            return complete_path;
+    }
+
+    while (true) {
+        std::string random_filename = generateRandomFilename();
+        complete_path = path + random_filename + mimes.getExtension(content_type);
+        if (!isFile(complete_path))
+            break;
+    }
+    return complete_path;
+}
+
 std::string  ResponseBuilder::getFileName(std::string const& content_type) {
     MimeTypes mimes;
-    std::string filename;
     std::string path;
+    std::string complete_path;
 
     if (!_location.get_upload_path().empty() && _location.get_upload_path()[0] != '/') {
         if (!_location.get_root().empty())
-            path = _location.get_root() + '/' + _location.get_upload_path();
+            path = _location.get_root() + '/' + _location.get_upload_path() + '/';
         else
-            path = _location.get_alias() + '/' + _location.get_upload_path();        
+            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';        
     }
     else
-        path = _location.get_upload_path();
+        path = _location.get_upload_path() + '/';
 
     if (!isDirectory(path))
         throw ForbiddenException();
-    size_t pos = content_type.find('/');
-    if (pos == std::string::npos)
-        filename = "file";
-    else
-        filename = content_type.substr(0, pos);
-    
-    return _location.get_upload_path() + '/' + filename + mimes.getExtension(content_type);
+
+    while (true) {
+        std::string filename = generateRandomFilename();
+        complete_path = path + filename + mimes.getExtension(content_type);
+        if (!isFile(complete_path))
+            break ;
+    }
+
+    return complete_path;
 }
 
-void    ResponseBuilder::writeToFile(std::string& filename, std::vector<char>& decoded_body) {
+std::string ResponseBuilder::generateRandomFilename() {
+    const int length = 10;
+    const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    const int alphanumSize = sizeof(alphanum) - 1;
+    std::string filename;
+    filename.reserve(length);
+
+    for (int i = 0; i < length; ++i) {
+        filename += alphanum[std::rand() % alphanumSize];
+    }
+    return filename;
+}
+
+void    ResponseBuilder::writeToFile(std::string& filename, std::vector<char>& file_content) {
+    if (file_content.empty())
+        throw BadRequestException(); //invalid format
     std::ofstream outfile(filename.c_str(), std::ios::out | std::ios::binary);
     if (!outfile)
         throw InternalServerErrorException();
-    outfile.write(&decoded_body[0], decoded_body.size());
+    outfile.write(&file_content[0], file_content.size());
+    if (!outfile)
+        throw InternalServerErrorException();
     outfile.close();
     if (!outfile.good())
         throw InternalServerErrorException();
