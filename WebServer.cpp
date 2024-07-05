@@ -156,7 +156,7 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	addToEpoll (newSockFD, EPOLLIN); // tirar EPOLLET por serem sockets não bloqueantes
+	addToEpoll (newSockFD, EPOLLIN ); // tirar EPOLLET por serem sockets não bloqueantes
 	//criar client, que vai ter um vector<Servers> usar a instancia de ResponseBuilder por enquanto:
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
@@ -201,8 +201,7 @@ void WebServer::handleConnections()
 						// done = 1;
 						break ;
 					}
-					std::string tmp (buf, bread);
-					request += tmp;
+					request.append(buf, bread);
 					memset(buf, 0, BUF_SIZE);
 					if (bread < BUF_SIZE)
 						break;
@@ -211,8 +210,25 @@ void WebServer::handleConnections()
                 if (_requestsCGI.find(events[i].data.fd) != _requestsCGI.end())
                 {
                     Logger::log(LOG_INFO, "CGI script finished. Handling response");
-                    std::string responseCGIDefault = "HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
+                    //std::string responseCGIDefault = "HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
+                    //std::string responseCGIDefault = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, world!";
                     HandleCGI cgiH = _requestsCGI[events[i].data.fd];
+                    std::string responseCGIDefault;
+
+					while (true)
+					{
+						ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
+						if (bread <= 0)
+						{
+							// done = 1;
+							break ;
+						}
+						responseCGIDefault.append(buf, bread);
+						memset(buf, 0, BUF_SIZE);
+						if (bread < BUF_SIZE)
+							break;
+					}
+					std::cout << "Response: " << responseCGIDefault << std::endl;
                     _requestsCGI.erase(events[i].data.fd);
                     write(cgiH._responseFd, responseCGIDefault.c_str(), responseCGIDefault.size());
                     close(cgiH._pipefd[0]);
@@ -236,6 +252,7 @@ void WebServer::handleConnections()
                         _conections.erase(events[i].data.fd);
                         // std::string default_req_CGI ="HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
                         // write(events[i].data.fd, response.c_str(), response.size());
+						continue ;
                     }
                     if (req.type == "STATIC") {
                         response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
