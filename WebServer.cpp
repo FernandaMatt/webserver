@@ -156,7 +156,7 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT ); // tirar EPOLLET por serem sockets não bloqueantes
+	addToEpoll (newSockFD, EPOLLIN); // tirar EPOLLET por serem sockets não bloqueantes
 	//criar client, que vai ter um vector<Servers> usar a instancia de ResponseBuilder por enquanto:
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
@@ -198,8 +198,7 @@ void WebServer::handleConnections()
 					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
 					if (bread <= 0)
 					{
-						std::cout << "li tudo bread ==" << bread<< std::endl;
-						done = 1;
+						// done = 1;
 						break ;
 					}
 					std::string tmp (buf, bread);
@@ -208,21 +207,42 @@ void WebServer::handleConnections()
 					if (bread < BUF_SIZE)
 						break;
 				}
-                httpRequest req = RequestParser::parseRequest(request);
-                if (req.type == "CGI")
+                //check if fd is in map
+                if (_requestsCGI.find(events[i].data.fd) != _requestsCGI.end())
                 {
-                    Logger::log(LOG_INFO, "CGI Request RECEIVED. Handle...." + request);
-					HandleCGI cgi(req);
-					std::string response = cgi.executeTest();
-					// std::string default_req_CGI ="HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
-                    write(events[i].data.fd, response.c_str(), response.size());
-					done = 1;
-                }
-                if (req.type == "STATIC") {
-                    response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
-                    std::vector<char> responseString = response.getResponse();
-                    write(events[i].data.fd, responseString.data(), responseString.size());
+                    Logger::log(LOG_INFO, "CGI script finished. Handling response");
+                    std::string responseCGIDefault = "HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
+                    HandleCGI cgiH = _requestsCGI[events[i].data.fd];
+                    _requestsCGI.erase(events[i].data.fd);
+                    write(cgiH._responseFd, responseCGIDefault.c_str(), responseCGIDefault.size());
+                    close(cgiH._pipefd[0]);
+                    close(cgiH._pipefd[1]);
+                    close(cgiH._responseFd);
                     done = 1;
+                }
+                else {
+                    httpRequest req = RequestParser::parseRequest(request);
+                    //check if request is CGI or STATIC
+                    if (req.type == "CGI")
+                    {
+                        Logger::log(LOG_INFO, "CGI Request RECEIVED. Handle...." + request);
+
+                        HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd);
+                        int fdPipe = cgiHandler->executeTest();
+                        Logger::log(LOG_INFO, "CGI execution started ..." + request);
+                        _requestsCGI[fdPipe] = *cgiHandler;
+                        Logger::log(LOG_INFO, "fdPipe added to map" + request);
+                        epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
+                        _conections.erase(events[i].data.fd);
+                        // std::string default_req_CGI ="HTTP/1.1 200 OK\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nImplement Handle CGI\n";
+                        // write(events[i].data.fd, response.c_str(), response.size());
+                    }
+                    if (req.type == "STATIC") {
+                        response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+                        std::vector<char> responseString = response.getResponse();
+                        write(events[i].data.fd, responseString.data(), responseString.size());
+                        done = 1;
+                    }
                 }
 				if (done)
 				{

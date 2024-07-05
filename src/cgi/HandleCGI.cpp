@@ -2,13 +2,15 @@
 
 HandleCGI::HandleCGI() {};
 
-HandleCGI::HandleCGI(httpRequest parsedRequest) {
+HandleCGI::HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd) {
 	this->_request = parsedRequest;
+    this->_fdEpool = fdEpool;
+    this->_responseFd = responseFd;
 };
 
 HandleCGI::~HandleCGI() {};
 
-std::string HandleCGI::executeTest() {
+int HandleCGI::executeTest() {
 	std::cout << "Executing test" << std::endl;
 
 	const char *path = "/bin/teste-cgi/test.php";
@@ -21,12 +23,12 @@ std::string HandleCGI::executeTest() {
     char *const envp[] = { NULL };
 
 	//criar pipe
-	int pipefd[2];
-
-	if (pipe(pipefd) == -1) {
+	if (pipe(_pipefd) == -1) {
 		perror("pipe");
 		exit(EXIT_FAILURE);
 	}
+
+
 
 	//fork
 	pid_t pid = fork();
@@ -37,10 +39,10 @@ std::string HandleCGI::executeTest() {
 
 	if (pid == 0) {
 		//close
-		close(pipefd[0]);
+		close(_pipefd[0]);
 
 		//dup2
-		dup2(pipefd[1], STDOUT_FILENO);
+		dup2(_pipefd[1], STDOUT_FILENO);
 
 		// Execute the program
 		if (execve(path, argv, envp) == -1) {
@@ -50,16 +52,22 @@ std::string HandleCGI::executeTest() {
 
 	} else {
 		//close
-		close(pipefd[1]);
+		// close(_pipefd[1]);
 
+        struct epoll_event event;
+        event.data.fd = _pipefd[1];
+        event.events = EPOLLOUT;
+        if (epoll_ctl(_fdEpool, EPOLL_CTL_ADD, _pipefd[1], &event) == -1)
+            throw std::runtime_error("epoll_ctl() failure");
 		//read
-		waitpid(pid, NULL, 0);
-		char buffer[300];
-		int n = read(pipefd[0], buffer, 300);
-		buffer[n] = '\0';
 
-		close(pipefd[0]);
-		return std::string(buffer);
+		// waitpid(pid, NULL, 0);
+		// char buffer[300];
+		// int n = read(pipefd[0], buffer, 300);
+		// buffer[n] = '\0';
+
+		// close(pipefd[0]);
+		return _pipefd[1];
 	}
-	return "";
+	return -1;
 }

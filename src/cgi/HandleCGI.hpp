@@ -8,6 +8,7 @@
 # include <unistd.h>
 # include <sys/types.h>
 # include <sys/wait.h>
+# include <sys/epoll.h>
 
 class HandleCGI {
 	private:
@@ -16,14 +17,17 @@ class HandleCGI {
 
 		std::vector<std::string>	buildEnv();
 		char **						convertEnv();
+        int                         _fdEpool;
 
 	public:
 		HandleCGI();
 		~HandleCGI();
-		HandleCGI(httpRequest parsedRequest);
+		HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd);
 
 		void executeCGI();
-		std::string executeTest();
+		int executeTest();
+        int                         _pipefd[2];
+        int                         _responseFd;
 
 };
 
