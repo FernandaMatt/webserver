@@ -242,7 +242,7 @@ void WebServer::handleConnections()
 						break;
 				}
                 httpRequest req = RequestParser::parseRequest(request);
-				std::cout << "request = " << request << std::endl;
+				//std::cout << "request = " << request << std::endl;
 				//req.printRequest();
                 if (req.type == "CGI")
                 {

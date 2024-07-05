@@ -11,6 +11,7 @@
 #include <sstream>
 #include <ctime>
 #include <cstdio>
+#include <map>
 #include "Response.hpp"
 
 class ResponseBuilder {
@@ -92,16 +93,17 @@ class ResponseBuilder {
         void processCGI();
 
 //post
+        std::string vectorToString(const std::vector<char>& vec);
         bool    isChunkedBody();
         bool    isMultipartBody();
-        void    postChunkedBody();
-        void    postMultipartBody();
-        void    postCompleteBody();
+        std::map<std::string, std::vector<char>>   postChunkedBody();
+        std::map<std::string, std::vector<char>>   postMultipartBody(std::string body_content);
+        std::map<std::string, std::vector<char>>   postCompleteBody();
         std::string getContentType();
         std::string getFileName(std::string& filename, std::string const& content_type);
         std::string getFileName(std::string const& content_type);
         std::string generateUniqueFilename(const std::string& filepath);
         std::string generateRandomFilename();
-        void    writeToFile(std::string& filename, std::vector<char>& decoded_body);
+        void    writeToFile(std::string const filename, std::vector<char> const decoded_body);
 
 };

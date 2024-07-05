@@ -286,6 +286,9 @@ const std::vector<char> ResponseBuilder::getResponse() const {
 
 //METODO POST
 
+std::string ResponseBuilder::vectorToString(const std::vector<char>& vec) {
+    return std::string(vec.begin(), vec.end());
+}
 
 void ResponseBuilder::processPOST() {
     //if it is not, check that the location accepts POST
@@ -296,17 +299,30 @@ void ResponseBuilder::processPOST() {
     defineLocation();
     checkMethodAndBodySize();
 
-    if (isMultipartBody()) {
-        //std::cout << "is multipart" << std::endl;
-        postMultipartBody();
+    std::map<std::string, std::vector<char>> map;
+    if (isMultipartBody() && isChunkedBody()) {
+        std::string file_content;
+        map = postChunkedBody();
+        file_content = vectorToString(map.begin()->second);
+        map.clear();
+        map = postMultipartBody(file_content);
+        for (std::map<std::string, std::vector<char>>::iterator it = map.begin(); it != map.end(); it++) {
+            writeToFile(it->first, it->second);
+        }
+    }
+    else if (isMultipartBody()) {
+        map = postMultipartBody(_parsedRequest.body);
+        for (std::map<std::string, std::vector<char>>::iterator it = map.begin(); it != map.end(); it++) {
+            writeToFile(it->first, it->second);
+        }
     }
     else if (isChunkedBody()) {
-        //std::cout << "is chunked" << std::endl;
-        postChunkedBody();
+        map = postChunkedBody();
+        writeToFile(map.begin()->first, map.begin()->second);
     }
     else {
-        //std::cout << "is complete body" << std::endl;
-        postCompleteBody();
+        map = postCompleteBody();
+        writeToFile(map.begin()->first, map.begin()->second);
     }
     _response.setStatusMessage("HTTP/1.1 201 Created\r\n");
     std::string empty_str;
@@ -332,7 +348,7 @@ bool    ResponseBuilder::isMultipartBody() {
     return false;
 }
 
-void   ResponseBuilder::postChunkedBody() {
+std::map<std::string, std::vector<char>>   ResponseBuilder::postChunkedBody() {
     std::vector<char> file_content;
     std::string content_type = getContentType();
     std::string filename = getFileName(content_type);
@@ -360,13 +376,15 @@ void   ResponseBuilder::postChunkedBody() {
             throw BadRequestException();
         pos += 2;
     }
-    writeToFile(filename, file_content);
+    std::map<std::string, std::vector<char>> map;
+    map.insert(std::pair<std::string, std::vector<char>>(filename, file_content));
+    return map;
 }
 
-void   ResponseBuilder::postMultipartBody() {
+std::map<std::string, std::vector<char>>   ResponseBuilder::postMultipartBody(std::string body_content) {
     if (_parsedRequest.body.empty())
         throw BadRequestException(); //invalid format
-
+    std::map<std::string, std::vector<char>> map;
 //find boundary
     std::string content_type = _parsedRequest.headers.find("Content-Type")->second;
     size_t pos = content_type.find('=');
@@ -375,17 +393,17 @@ void   ResponseBuilder::postMultipartBody() {
     std::string boundary = content_type.substr(pos + 1);
 
     pos = 0;
-    while (pos < _parsedRequest.body.size()) {
+    while (pos < body_content.size()) {
         //set headers
-        size_t part_start = _parsedRequest.body.find(boundary, pos);
+        size_t part_start = body_content.find(boundary, pos);
         if (part_start == std::string::npos)
             break;
         part_start += boundary.size() + 2;
         //find end of headers
-        size_t headers_end = _parsedRequest.body.find("\r\n\r\n", part_start);
+        size_t headers_end = body_content.find("\r\n\r\n", part_start);
         if (headers_end == std::string::npos)
             break;
-        std::string headers = _parsedRequest.body.substr(part_start, headers_end - part_start);
+        std::string headers = body_content.substr(part_start, headers_end - part_start);
         part_start = headers_end + 4;
         std::string filename;
         std::string complete_filename;
@@ -410,9 +428,9 @@ void   ResponseBuilder::postMultipartBody() {
                 content_type = header.substr(content_type_pos + 2);
             }
             //encontrar o final da parte
-            size_t part_end = _parsedRequest.body.find(boundary, part_start);
+            size_t part_end = body_content.find(boundary, part_start);
             if (part_end == std::string::npos)
-                part_end = _parsedRequest.body.size();
+                part_end = body_content.size();
             else
                 part_end -= 2;
             if (part_end < part_start)
@@ -420,23 +438,27 @@ void   ResponseBuilder::postMultipartBody() {
             //add o conteudo no vetor
             if (!filename.empty() && !content_type.empty()) {
                 complete_filename = getFileName(filename, content_type);
-                std::vector<char> file_content(_parsedRequest.body.begin() + part_start, _parsedRequest.body.begin() + part_end);
-                writeToFile(complete_filename, file_content);
+                std::vector<char> file_content(body_content.begin() + part_start, body_content.begin() + part_end);
+                map.insert(std::pair<std::string, std::vector<char>>(complete_filename, file_content));
+                //writeToFile(complete_filename, file_content);
             }
             pos = part_end + 2;
         }
     }
+    return map;
 }
 
-void   ResponseBuilder::postCompleteBody() {
+std::map<std::string, std::vector<char>>   ResponseBuilder::postCompleteBody() {
     if (_parsedRequest.body.empty())
         throw BadRequestException(); //invalid format
+    std::map<std::string, std::vector<char>> map;
     std::vector<char> file_content;
     file_content.reserve(_parsedRequest.body.size());
     file_content.insert(file_content.end(), _parsedRequest.body.begin(), _parsedRequest.body.end());
     std::string content_type = getContentType();
     std::string filename = getFileName(content_type);
-    writeToFile(filename, file_content);
+    map.insert(std::pair<std::string, std::vector<char>>(filename, file_content));
+    return map;
 }
 
 std::string  ResponseBuilder::getContentType() {
@@ -519,7 +541,7 @@ std::string ResponseBuilder::generateUniqueFilename(const std::string& file_path
     return complete_path;
 }
 
-void    ResponseBuilder::writeToFile(std::string& filename, std::vector<char>& file_content) {
+void    ResponseBuilder::writeToFile(std::string const filename, std::vector<char> const file_content) {
     if (file_content.empty())
         throw BadRequestException(); //invalid format
     std::ofstream outfile(filename.c_str(), std::ios::out | std::ios::binary);
