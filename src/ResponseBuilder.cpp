@@ -239,8 +239,9 @@ void ResponseBuilder::buildResponse(Server server, httpRequest request) {
             processGET();
         else if (_parsedRequest.method == POST)
             processPOST();
-        else if (_parsedRequest.method == DELETE)
+        else if (_parsedRequest.method == DELETE) {
             processDELETE();
+        }
         else {
             throw MethodNotAllowedException();
         }
@@ -307,12 +308,11 @@ void ResponseBuilder::processPOST() {
         //std::cout << "is complete body" << std::endl;
         postCompleteBody();
     }
-    _response.setStatusMessage("HTTP/1.1 200 OK\r\n");
-    std::ostringstream oss;
-    oss << "Content-Length: 29\r\n";
-    oss << "Content-Type: text/plain\r\n\r\n";
-    _response.setHttpHeaders(oss.str());
-    _response.setResponseContent("Upload realizado com sucesso!");
+    _response.setStatusMessage("HTTP/1.1 201 Created\r\n");
+    std::string empty_str;
+    empty_str.clear();
+    _response.setResponseContent(empty_str);
+    _response.setHttpHeaders(empty_str);
 }
 
 bool    ResponseBuilder::isChunkedBody() {
@@ -447,7 +447,7 @@ std::string  ResponseBuilder::getContentType() {
     return NULL;
 }
 
-std::string  ResponseBuilder::getFileName(std::string const& filename, std::string const& content_type) {
+std::string  ResponseBuilder::getFileName(std::string& filename, std::string const& content_type) {
     MimeTypes mimes;
     std::string path;
     std::string complete_path;
@@ -465,18 +465,19 @@ std::string  ResponseBuilder::getFileName(std::string const& filename, std::stri
         throw ForbiddenException();
     
     if (!filename.empty()) {
+        if (filename[0] == '/')
+            filename = filename.substr(1);
         complete_path = path + filename;
-        if (!isFile(complete_path))
-            return complete_path;
+        return generateUniqueFilename(complete_path);
     }
 
-    while (true) {
-        std::string random_filename = generateRandomFilename();
-        complete_path = path + random_filename + mimes.getExtension(content_type);
-        if (!isFile(complete_path))
-            break;
-    }
-    return complete_path;
+    size_t pos = content_type.find('/');
+    if (pos == std::string::npos)
+        filename = "file";
+    else
+        filename = content_type.substr(0, pos);
+    complete_path = path + filename + mimes.getExtension(content_type);
+    return generateUniqueFilename(complete_path);
 }
 
 std::string  ResponseBuilder::getFileName(std::string const& content_type) {
@@ -496,27 +497,26 @@ std::string  ResponseBuilder::getFileName(std::string const& content_type) {
     if (!isDirectory(path))
         throw ForbiddenException();
 
-    while (true) {
-        std::string filename = generateRandomFilename();
-        complete_path = path + filename + mimes.getExtension(content_type);
-        if (!isFile(complete_path))
-            break ;
-    }
-
-    return complete_path;
+    size_t pos = content_type.find('/');
+    std::string filename;
+    if (pos == std::string::npos)
+        filename = "file";
+    else
+        filename = content_type.substr(0, pos);
+    complete_path = path + filename + mimes.getExtension(content_type);
+    return generateUniqueFilename(complete_path);
 }
 
-std::string ResponseBuilder::generateRandomFilename() {
-    const int length = 10;
-    const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    const int alphanumSize = sizeof(alphanum) - 1;
-    std::string filename;
-    filename.reserve(length);
+std::string ResponseBuilder::generateUniqueFilename(const std::string& file_path) {
+    std::string complete_path = file_path;
+    size_t pos_ext = complete_path.find_last_of('.');
+    std::string base = complete_path.substr(0, pos_ext);
+    std::string ext = (pos_ext == std::string::npos) ? "" : complete_path.substr(pos_ext);
 
-    for (int i = 0; i < length; ++i) {
-        filename += alphanum[std::rand() % alphanumSize];
+    for (int i = 1; isFile(complete_path); i++) {
+        complete_path = base + '(' + std::to_string(i) + ')' + ext;
     }
-    return filename;
+    return complete_path;
 }
 
 void    ResponseBuilder::writeToFile(std::string& filename, std::vector<char>& file_content) {
@@ -534,13 +534,66 @@ void    ResponseBuilder::writeToFile(std::string& filename, std::vector<char>& f
 }
 
 
-
-
-
 //METODO DELETE
+
+
 void ResponseBuilder::processDELETE() {
-    //check if the path is a file
-    //delete the file
-    defineLocation();
+    
+    std::string path;
+    std::string filename;
+    size_t pos = _parsedRequest.path.find_last_of('/');
+    if (pos == std::string::npos)
+        throw BadRequestException();
+    
+    if (pos == 0) {
+        path = "/";
+        if (_parsedRequest.path.size() > 1)
+            filename = _parsedRequest.path.substr(1);
+    }
+    else {
+        path = _parsedRequest.path.substr(0, pos);
+        if (_parsedRequest.path.size() > pos + 1)
+            filename = _parsedRequest.path.substr(pos + 1);
+    }
+
+    bool location_found = false;
+    std::vector<Location> locations = _server.get_location();
+    for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++) {
+        if (it->get_path() == path) {
+            _location = *it;
+            location_found = true;
+            break;
+        }
+    }
+    if (location_found == false)
+        throw BadRequestException();
+    
     checkMethodAndBodySize();
+
+    std::string complete_path;
+    if (!filename.empty()) {
+        if (!_location.get_root().empty())
+            complete_path = _location.get_root() + _location.get_path() + '/' + filename;
+        else
+            complete_path = _location.get_alias() + '/' + filename;
+    }
+    else {
+        if (!_location.get_root().empty())
+            complete_path = _location.get_root() + _location.get_path();
+        else
+            complete_path = _location.get_alias();
+    }
+
+    if (isFile(complete_path)) {
+       if (std::remove(complete_path.c_str()) != 0)
+            throw InternalServerErrorException();
+    }
+    else
+        throw NoLocationException();
+
+    _response.setStatusMessage("HTTP/1.1 204 No Content\r\n");
+    std::string empty_str;
+    empty_str.clear();
+    _response.setResponseContent(empty_str);
+    _response.setHttpHeaders(empty_str);
 }

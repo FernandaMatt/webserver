@@ -231,8 +231,8 @@ void WebServer::handleConnections()
 					ssize_t bread = read(events[i].data.fd, buf, BUF_SIZE);
 					if (bread <= 0)
 					{
-						std::cout << "li tudo bread ==" << bread<< std::endl;
-						done = 1;
+						// std::cout << "li tudo bread ==" << bread<< std::endl;
+						// done = 1;
 						break ;
 					}
 					std::string tmp (buf, bread);
@@ -243,7 +243,7 @@ void WebServer::handleConnections()
 				}
                 httpRequest req = RequestParser::parseRequest(request);
 				std::cout << "request = " << request << std::endl;
-				req.printRequest();
+				//req.printRequest();
                 if (req.type == "CGI")
                 {
                     write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
