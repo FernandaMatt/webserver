@@ -232,30 +232,33 @@ void WebServer::handleConnections()
 					if (bread <= 0)
 					{
 						// std::cout << "li tudo bread ==" << bread<< std::endl;
-						// done = 1;
+						done = 1;
 						break ;
 					}
-					std::string tmp (buf, bread);
-					request += tmp;
+					// std::string tmp (buf, bread);
+					// request += tmp;
+					request.append(buf, bread);
 					memset(buf, 0, BUF_SIZE);
 					if (bread < BUF_SIZE)
 						break;
 				}
-                httpRequest req = RequestParser::parseRequest(request);
-				//std::cout << "request = " << request << std::endl;
-				//req.printRequest();
-                if (req.type == "CGI")
-                {
-                    write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
-                    done = 1;
-                }
-                if (req.type == "STATIC") {
-                    response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
-                    std::vector<char> responseString = response.getResponse();
-					std::cout << "--- RESPONSE ---" << std::endl << response.get_response() << std::endl;
-                    write(events[i].data.fd, responseString.data(), responseString.size());
-                    done = 1;
-                }
+				if (!request.empty()) {
+					httpRequest req = RequestParser::parseRequest(request);
+					//std::cout << "request = " << request << std::endl;
+					//req.printRequest();
+					if (req.type == "CGI")
+					{
+						write(events[i].data.fd, "HTTP/1.1 200 OK\r\nContent-Length: 39\r\n\r\nImplement Handle CGI\n", 66);
+						done = 1;
+					}
+					if (req.type == "STATIC") {
+						response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+						std::vector<char> responseString = response.getResponse();
+						std::cout << "--- RESPONSE ---" << std::endl << response.get_response() << std::endl;
+						write(events[i].data.fd, responseString.data(), responseString.size());
+						done = 1;
+					}
+				}
 				if (done)
 				{
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
