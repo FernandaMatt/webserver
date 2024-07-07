@@ -230,6 +230,8 @@ std::string Location::search_index_file(std::string path) {
             file_name = file_name.substr(1);
         if (file_name[file_name.size() - 1] == '/')
             file_name = file_name.substr(0, file_name.size() - 1);
+        if (path[path.size() - 1] == '/')
+            path = path.substr(0, path.size() - 1);
         index_file_path = path + '/' +file_name;
         if (stat(index_file_path.c_str(), &buffer) == 0)
             return index_file_path;
