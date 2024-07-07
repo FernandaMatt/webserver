@@ -5,8 +5,26 @@ Location::Location() {
 }
 
 Location::~Location() {
-
 }
+
+Location& Location::operator=(const Location &obj){
+	if (this != &obj )
+	{
+        _path = obj._path;
+        _root = obj._root;
+		_alias = obj._alias;
+		_client_max_body_size = obj._client_max_body_size;
+		_autoindex = obj._autoindex;
+		_index = obj._index;
+        _methods = obj._methods;
+		_error_pages = obj._error_pages;
+        _upload_path = obj._upload_path;
+        _cgi_path = obj._cgi_path;
+        _cgi_ext = obj._cgi_ext;
+    }
+	return(*this);
+}
+
 
 //setters
 
@@ -144,6 +162,8 @@ void    Location::set_upload_path(std::string upload_path) {
         throw std::runtime_error("Error in config file: duplicate directive upload_path");
     if (upload_path.find(' ') != std::string::npos)
         throw std::runtime_error("Error in config file: invalid number of arguments in upload_path");
+    if (!upload_path.empty() && upload_path.size() != 1 && upload_path[upload_path.size() - 1] == '/')
+        upload_path.erase(upload_path.size() - 1);
     _upload_path = upload_path;
 }
 

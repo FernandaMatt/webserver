@@ -19,11 +19,11 @@ int main(int argc, char **argv) {
 
 	Parser		*parser = NULL;
 	WebServer	*webServer = NULL;
-
+	std::srand(std::time(0));
 	try {
 		parser = new Parser(config_file);
 		Logger::log(LOG_INFO, "parse of configuration file completed");
-		// parser->print_servers_directives();
+		//parser->print_servers_directives();
 		webServer= new WebServer(parser->get_servers());
 		webServer->run();
 	}

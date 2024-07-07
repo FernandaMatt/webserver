@@ -9,6 +9,9 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
+#include <ctime>
+#include <cstdio>
+#include <map>
 #include "Response.hpp"
 
 
@@ -19,6 +22,7 @@ class ResponseBuilder {
 
 		void printInitializedAttributes();
         void buildResponse(Server server, httpRequest request);
+        Response& get_response();
 
         const std::vector<char> getResponse() const;
 
@@ -57,6 +61,13 @@ class ResponseBuilder {
                 }
         };
 
+        class BadRequestException : public std::exception {
+            public:
+               virtual const char* what() const throw() {
+                    return "Bad Request";
+                }
+        };
+
 	private:
 		httpRequest _parsedRequest;
 		Response _response;
@@ -81,4 +92,19 @@ class ResponseBuilder {
         bool checkAutoIndex(std::string &path);
         bool isCGI();
         void processCGI();
+
+//post
+        std::string vectorToString(const std::vector<char>& vec);
+        bool    isChunkedBody();
+        bool    isMultipartBody();
+        std::map<std::string, std::vector<char>>   postChunkedBody();
+        std::map<std::string, std::vector<char>>   postMultipartBody(std::string body_content);
+        std::map<std::string, std::vector<char>>   postCompleteBody();
+        std::string getContentType();
+        std::string getFileName(std::string& filename, std::string const& content_type);
+        std::string getFileName(std::string const& content_type);
+        std::string generateUniqueFilename(const std::string& filepath);
+        std::string generateRandomFilename();
+        void    writeToFile(std::string const filename, std::vector<char> const decoded_body);
+
 };
