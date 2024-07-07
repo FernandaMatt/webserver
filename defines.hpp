@@ -58,7 +58,7 @@ typedef struct httpRequest
         // else
         //     std::cout << "UNKNOWN";
         // std::cout << std::endl;
-        std::cout << BLUE << "Query String: " << RST << queryString << std::endl;
+        std::cout << BLUE << "Query String: '" << RST << queryString << "'" << std::endl;
         for (std::map<std::string, std::string>::iterator it = queryVariables.begin(); it != queryVariables.end(); it++)
             std::cout << "\t" << it->first << ": " << it->second << std::endl;
 		std::cout << BLUE << "Version: " << RST << version << std::endl;
