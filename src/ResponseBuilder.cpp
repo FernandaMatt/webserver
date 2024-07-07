@@ -168,8 +168,9 @@ void ResponseBuilder::searchRoot() {
                 return;
             throw ForbiddenException();
         }
-        file_path += "/" + index_file_path;
+        // file_path += "/" + index_file_path;
         loadResponseFromFile(index_file_path);
+        return;
     }
     _response.loadDefaultErrorPage(403);// CHECK THE RIGHT ERROR when the path configured in the .conf file does not exist
 }
