@@ -36,11 +36,27 @@ int HandleCGI::executeTest() {
 	}
 
 	if (pid == 0) {
+        // int pipeBody[2];
+
 		close(_pipefd[0]);
 
 		dup2(_pipefd[1], STDOUT_FILENO);
 
 		close(_pipefd[1]);
+
+        // if (pipe(pipeBody) == -1) {
+        //     perror("pipe");
+        //     exit(EXIT_FAILURE);
+        // }
+
+        // dup2(pipeBody[0], STDIN_FILENO);
+
+        // if (write(pipeBody[1], _request.body.c_str(), _request.body.size()) <= 0)
+        //     throw std::runtime_error("write() failure");
+
+        // close(pipeBody[1]);
+
+        // close(pipeBody[0]);
 
 		if (execve(path, argv, envp) == -1) {
 			perror("execve");
@@ -59,4 +75,20 @@ int HandleCGI::executeTest() {
 		return _pipefd[0];
 	}
 	return -1;
+}
+
+std::vector<std::string> HandleCGI::buildEnv() {
+    std::vector<std::string> env;
+
+    if (_request.body.size() > 0)
+        env.push_back("CONTENT_LENGTH=" + std::to_string(_request.body.size()));
+    if (_request.headers.find("Content-Type") != _request.headers.end())
+        env.push_back("CONTENT_TYPE=" + _request.headers["Content-Type"]);
+    env.push_back("GATEWAY_INTERFACE=CGI/1.1");
+
+
+    //print env
+    for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it)
+        std::cout << *it << std::endl;
+    return env;
 }
