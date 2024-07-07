@@ -9,6 +9,8 @@
 # include <sys/types.h>
 # include <sys/wait.h>
 # include <sys/epoll.h>
+# include <fcntl.h>
+# include <string.h>
 
 class HandleCGI {
 	private:
@@ -28,6 +30,7 @@ class HandleCGI {
 		int executeTest();
         int                         _pipefd[2];
         int                         _responseFd;
+		std::string					_responseCGI;
 
 };
 
