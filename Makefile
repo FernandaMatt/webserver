@@ -4,6 +4,7 @@ SRCS =	$(wildcard *.cpp) \
 		src/RequestParser.cpp \
 		src/ResponseBuilder.cpp \
 		src/Response.cpp \
+		src/cgi/HandleCGI.cpp \
 		src/utils/MimeTypes.cpp
 
 CC = c++

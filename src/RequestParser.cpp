@@ -30,10 +30,10 @@ httpRequest RequestParser::parseRequest(std::string request)
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
         req.type = getResourceType(req.path);
-        // if (parsing_request[0] == '?') {
-        //     req.queryString = getQueryString(parsing_request);
-        //     req.queryVariables = getQueryVariables(parsing_request);
-        // }
+        if (parsing_request[0] == '?') {
+            req.queryString = getQueryString(parsing_request);
+            req.queryVariables = getQueryVariables(parsing_request);
+        }
 		req.version = getVersion(parsing_request);
 		req.headers = getHeaders(parsing_request);
 		req.body = getBody(parsing_request);
@@ -47,6 +47,7 @@ httpRequest RequestParser::parseRequest(std::string request)
 		return req;
 	}
 	req.statusCode = 200;
+    req.printRequest();
 	return req;
 }
 
@@ -106,7 +107,7 @@ std::string RequestParser::getQueryString(std::string &parsing_request)
     pos = parsing_request.find(" ");
     if (pos == std::string::npos)
         throw std::invalid_argument("Bad request");
-    return parsing_request.substr(1, pos);
+    return parsing_request.substr(1, pos - 1);
 }
 
 std::map<std::string, std::string> RequestParser::getQueryVariables(std::string &parsing_request)

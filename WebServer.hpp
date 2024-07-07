@@ -9,6 +9,9 @@
 # include "Server.hpp"
 # include "defines.hpp"
 # include "src/ResponseBuilder.hpp"
+# include "src/RequestParser.hpp"
+# include "src/cgi/HandleCGI.hpp"
+
 
 class Server;
 class Logger;
@@ -18,6 +21,7 @@ class WebServer {
 		int					_epollFD;
 		std::map<int, std::vector<Server>> _fdToServers;
 		std::map<int, std::vector<Server>> _conections;
+		std::map<int, HandleCGI> _requestsCGI;
 
 		WebServer();
 

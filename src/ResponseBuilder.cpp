@@ -163,16 +163,18 @@ void ResponseBuilder::searchRoot() {
         return;
     }
     if (isDirectory(file_path)) {
-        
+
         std::string index_file_path = _location.search_index_file(file_path);
         if (index_file_path == "") {
             if (checkAutoIndex(file_path))
                 return;
             throw ForbiddenException();
         }
-        file_path += "/" + index_file_path;
+        // file_path += "/" + index_file_path;
         loadResponseFromFile(index_file_path);
+        return;
     }
+    _response.loadDefaultErrorPage(403);// CHECK THE RIGHT ERROR when the path configured in the .conf file does not exist
 }
 
 void ResponseBuilder::searchLocation() {

@@ -6,13 +6,14 @@
 #include "../Server.hpp"
 #include "RequestParser.hpp"
 #include "../Logger.hpp"
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <fstream>
 #include <sstream>
 #include <ctime>
 #include <cstdio>
 #include <map>
 #include "Response.hpp"
+
 
 class ResponseBuilder {
 	public:
