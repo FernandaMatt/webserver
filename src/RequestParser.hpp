@@ -30,6 +30,11 @@ class RequestParser
 		static std::string							getBody(std::string &parsing_request);
 		static std::string							getHost(std::string hostPort);
 		static std::string							getPort(std::string hostPort);
+		static std::string							getRequestStatus(httpRequest &request);
 		static httpMethod							stringToHttpMethod(const std::string& method);
 		static std::string							httpMethodToString(const httpMethod &method);
+		static bool    								isChunkedBody(httpRequest &request);
+		static std::string							isChunkedComplete(std::string &body);
+        static bool    								isMultipartBody(httpRequest &request);
+		static std::string							isMultipartComplete(httpRequest &request);
 };
