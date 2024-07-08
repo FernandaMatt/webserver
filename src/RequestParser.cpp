@@ -26,10 +26,15 @@ httpRequest RequestParser::parseRequest(std::string request)
 
 	parsing_request = request;
     req.queryVariables.clear();
+    req.extraPath.clear();
 	try {
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
         req.type = getResourceType(req.path);
+        if (req.type == "CGI") {
+            req.extraPath = getExtraPath(req.path);
+            req.path = req.path.substr(0, req.path.find(".php") + 4);
+        }
         if (parsing_request[0] == '?') {
             req.queryString = getQueryString(parsing_request);
             req.queryVariables = getQueryVariables(parsing_request);
@@ -93,9 +98,17 @@ std::string RequestParser::getPath(std::string &parsing_request)
 
 std::string RequestParser::getResourceType(std::string url)
 {
-    if (url.size() > 4 && url.substr(url.size() - 4) == ".php")
+    if (url.find(".php") != std::string::npos)
         return "CGI";
     return "STATIC";
+}
+
+std::string RequestParser::getExtraPath(std::string url)
+{
+    size_t pos = url.find(".php");
+    if (pos == std::string::npos)
+        throw std::invalid_argument("Bad request");
+    return url.substr(pos + 4, url.size() - pos - 4);
 }
 
 std::string RequestParser::getQueryString(std::string &parsing_request)

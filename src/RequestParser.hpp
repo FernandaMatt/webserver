@@ -23,6 +23,7 @@ class RequestParser
 		static httpMethod							getMethod(std::string &parsing_request);
 		static std::string  						getPath(std::string &parsing_request);
         static std::string                          getResourceType(std::string url);
+		static std::string  						getExtraPath(std::string url);
         static std::string                          getQueryString(std::string &parsing_request);
 		static std::map<std::string, std::string>	getQueryVariables(std::string &parsing_request);
 		static std::string  						getVersion(std::string &parsing_request);

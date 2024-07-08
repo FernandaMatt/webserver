@@ -265,7 +265,7 @@ void WebServer::handleConnections()
 							Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
 							HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd);
 
-							int fdPipe = cgiHandler->executeTest();
+							int fdPipe = cgiHandler->executeCGI();
 
 							_requestsCGI[fdPipe] = *cgiHandler;
 						}
