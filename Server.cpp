@@ -15,7 +15,7 @@ Server& Server::operator=(const Server &obj){
 		_client_max_body_size = obj._client_max_body_size;
 		_autoindex = obj._autoindex;
 		_server_name = obj._server_name;
-		_index = obj._server_name;
+		_index = obj._index;
 		_error_pages = obj._error_pages;
 		_locations = obj._locations;
 		_host_port = obj._host_port;
@@ -310,6 +310,20 @@ void    Server::set_default_directives(){
         location.set_path("/");
         this->set_location(location);
     }
+	for (std::map<int, std::string>::iterator it = _error_pages.begin(); it != _error_pages.end(); it++) {
+		if (it->second[0] != '/') {
+			if (_root[_root.size() - 1] != '/') {
+				std::string aux = _root + '/' + it->second;
+				it->second.clear();
+				it->second = aux;
+			}
+			else {
+				std::string aux = _root + it->second;
+				it->second.clear();
+				it->second = aux;
+			}
+		}
+    }
 
     //set default directives for locations
     for (size_t i = 0; i < _locations.size(); i++) {
@@ -335,8 +349,36 @@ void    Server::set_default_directives(){
         if (_locations[i].get_methods().empty()) {
             _locations[i].set_methods("GET");
         }
-        for (std::map<int, std::string>::iterator it = _error_pages.begin(); it != _error_pages.end(); it++) {
-            std::map<int, std::string> error_page_map = _locations[i].get_error_pages();
+		for (std::map<int, std::string>::iterator it = _locations[i].get_error_pages().begin(); it != _locations[i].get_error_pages().end(); it++) {
+			if (it->second[0] != '/') {
+				if (!_locations[i].get_root().empty()) {
+					if (_locations[i].get_root()[_locations[i].get_root().size() - 1] != '/') {
+						std::string aux = _locations[i].get_root() + '/' + it->second;
+						it->second.clear();
+						it->second = aux;
+					}
+					else {
+						std::string aux = _locations[i].get_root() + it->second;
+						it->second.clear();
+						it->second = aux;
+					}
+				}
+				else {
+					if (_locations[i].get_alias()[_locations[i].get_alias().size() - 1] != '/') {
+						std::string aux = _locations[i].get_alias() + '/' + it->second;
+						it->second.clear();
+						it->second = aux;
+					}
+					else {
+						std::string aux = _locations[i].get_alias() + it->second;
+						it->second.clear();
+						it->second = aux;
+					}
+				}
+			}
+		}
+        std::map<int, std::string> error_page_map = _locations[i].get_error_pages();
+		for (std::map<int, std::string>::iterator it = _error_pages.begin(); it != _error_pages.end(); it++) {
             if (error_page_map.find(it->first) == error_page_map.end()) {
                 std::stringstream ss;
                 ss << it->first;
@@ -349,7 +391,7 @@ void    Server::set_default_directives(){
             else
                 _locations[i].set_upload_path(_locations[i].get_alias());
         }
-    }
+	}    
 }
 
 void    Server::print_all_directives() const {

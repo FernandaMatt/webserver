@@ -9,6 +9,7 @@ class Location {
     public:
         Location();
         ~Location();
+        Location    &operator = (const Location& obj);
 
         //setters
         void    set_path(std::string path);
@@ -25,8 +26,8 @@ class Location {
 
         //getters
     	std::string                 get_path() const;
-        std::string&                 get_root();
-        std::string&                 get_alias();
+        std::string&                get_root();
+        std::string&                get_alias();
         long                        get_client_max_body_size();
         std::string&                get_autoindex();
         std::vector<std::string>&   get_index();

@@ -170,6 +170,11 @@ bool Response::setResponseContent(std::ifstream &ifs, std::streamsize &size, con
 void Response::loadDefaultErrorPage(int statusCode) {
     _responseContent.clear();
     switch (statusCode) {
+        case 400:
+            setStatusMessage(STATUS_400);
+            setHttpHeaders(HEADER_400);
+            setResponseContent(HTML_400);
+            break;        
         case 404:
             setStatusMessage(STATUS_404);
             setHttpHeaders(HEADER_404);
