@@ -196,10 +196,9 @@ void WebServer::handleConnections()
 				// checking for EPOLLIN event, ready to read from fd
 				if (events[i].events & EPOLLIN)
 				{
-					//check if fd is in CGI map, if so, read from pipe
+					//check if actual fd is in CGI map, if so, read from pipe
 					if (_requestsCGI.find(fd) != _requestsCGI.end())
 					{
-						//Logger::log(LOG_INFO, "CGI script finished. Handling response");
 						HandleCGI& cgiH = _requestsCGI[fd];
 
 						while (true)
@@ -226,11 +225,11 @@ void WebServer::handleConnections()
 							if (bread < BUF_SIZE)
 								break;
 						}
-						//already read from pipe, so remove from epoll and close pipe
+						//already read from pipe, so remove from epoll and close pipe fd
 						epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
 						close(cgiH._pipefd[0]);
 					}
-					else //else read from fd and get request
+					else //else read from socket connection and get request
 					{
 						while (true)
 						{
@@ -243,7 +242,7 @@ void WebServer::handleConnections()
 									// if bread == -1, that means an error occurred, so done is set to close the connection and remove from epoll
 									done = 1;
 								}
-								break ; //else only break the loop for now
+								break ; //with error only break the loop for now
 							}
 							request.append(buf, bread);
 							memset(buf, 0, BUF_SIZE);
@@ -259,27 +258,47 @@ void WebServer::handleConnections()
 					if (request.size() > 0)
 					{
 						httpRequest req = RequestParser::parseRequest(request);
-						//check if request is CGI or STATIC
-						if (req.type == "CGI")
+						//check if request is incomplete
+						if (req.request_status == "incomplete")
 						{
-							Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
-							HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd);
-
-							int fdPipe = cgiHandler->executeTest();
-
-							_requestsCGI[fdPipe] = *cgiHandler;
-						}
-						if (req.type == "STATIC")
-						{
-							response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
-							std::vector<char> responseString = response.getResponse();
-							size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-							if (wbytes <= 0)
+							//if request is incomplete, check if its is already in _requests, if so, append to its body
+							if (_requests.find(fd) != _requests.end())
 							{
-								if (wbytes == -1)
-									Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
+								_requests[fd].body.append(request);
+								req = _requests[fd];
 							}
-							done = 1; //answer sent, close connection
+							//else add to _requests map
+							else
+							{
+								httpRequest *addReq = new httpRequest(req);
+								_requests[fd] = *addReq;
+							}
+						}
+						//check if request is complete and if so, check if it is CGI or STATIC
+						if (req.request_status == "complete")
+						{
+							//check if request is CGI or STATIC
+							if (req.type == "CGI")
+							{
+								Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
+								HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd);
+
+								int fdPipe = cgiHandler->executeTest();
+
+								_requestsCGI[fdPipe] = *cgiHandler;
+							}
+							if (req.type == "STATIC")
+							{
+								response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+								std::vector<char> responseString = response.getResponse();
+								size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
+								if (wbytes <= 0)
+								{
+									if (wbytes == -1)
+										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
+								}
+								done = 1; //answer sent, close connection
+							}
 						}
 					}
 					//check if fd is in responseFd, if so, send response
@@ -309,6 +328,11 @@ void WebServer::handleConnections()
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
                     _conections.erase(events[i].data.fd);
 					close(events[i].data.fd);
+					if (_requests.find(events[i].data.fd) != _requests.end())
+					{
+						_requests.erase(events[i].data.fd);
+					}
+
 				}
 			}
 		}
