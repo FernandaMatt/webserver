@@ -11,6 +11,7 @@
 # include "src/ResponseBuilder.hpp"
 # include "src/RequestParser.hpp"
 # include "src/cgi/HandleCGI.hpp"
+# include <csignal>
 
 
 class Server;
@@ -21,8 +22,9 @@ class WebServer {
 		int					_epollFD;
 		std::map<int, std::vector<Server>> _fdToServers;
 		std::map<int, std::vector<Server>> _conections;
-		std::map<int, HandleCGI> _requestsCGI;
-		std::map<int, httpRequest> _requests;
+		std::map<int, HandleCGI*> _requestsCGI;
+		std::map<int, httpRequest*> _requests;
+		static bool				isRunning;
 
 		WebServer();
 
@@ -34,6 +36,8 @@ class WebServer {
 		void	handleConnections( );
 		int		isServerFDCheck(const int &i) const;
 		Server	delegateRequest(std::vector<Server> candidateServers, std::string host);
+
+		static void	handleSignal(int param);
 
 	public:
 		WebServer(const std::vector<Server> &parsedServers);

@@ -1,5 +1,7 @@
 #include "WebServer.hpp"
 
+bool WebServer::isRunning = false;
+
 WebServer::WebServer(const std::vector<Server> &parsedServers) {
 	std::map<std::string, std::vector<Server>> groupServers;
 
@@ -17,6 +19,8 @@ WebServer::WebServer(const std::vector<Server> &parsedServers) {
 
 	creatingAndBinding(groupServers);
 	settingListeners();
+
+	isRunning = true;
 }
 
 WebServer::~WebServer() {
@@ -27,6 +31,12 @@ WebServer::~WebServer() {
 		close(it->first);
 	}
 	this->_fdToServers.clear();
+}
+
+void WebServer::handleSignal(int param) {
+	(void)param;
+	isRunning = false;
+	Logger::log(LOG_INFO, "Signal received, stopping server...");
 }
 
 Server WebServer::delegateRequest(std::vector<Server> candidateServers, std::string host) {
@@ -177,8 +187,11 @@ void WebServer::handleConnections()
 	{
 		int totalFD = epoll_wait(this->_epollFD, events, MAX_EVENTS, -1);
 
+		if (!isRunning)
+			break;
 		if (totalFD == -1)
 			throw std::runtime_error("epoll_wait() failure");
+
 
 		for (int i = 0; i < totalFD; i++)
 		{
@@ -199,7 +212,7 @@ void WebServer::handleConnections()
 					//check if actual fd is in CGI map, if so, read from pipe
 					if (_requestsCGI.find(fd) != _requestsCGI.end())
 					{
-						HandleCGI& cgiH = _requestsCGI[fd];
+						HandleCGI &cgiH = *_requestsCGI[fd];
 
 						while (true)
 						{
@@ -217,6 +230,7 @@ void WebServer::handleConnections()
 								close(cgiH._responseFd);
 								_conections.erase(cgiH._responseFd);
 								cgiH._responseCGI = "";
+								delete _requestsCGI[fd];
 								_requestsCGI.erase(fd);
 								break ;
 							}
@@ -264,14 +278,14 @@ void WebServer::handleConnections()
 							//if request is incomplete, check if its is already in _requests, if so, append to its body
 							if (_requests.find(fd) != _requests.end())
 							{
-								_requests[fd].body.append(request);
-								req = _requests[fd];
+								_requests[fd]->body.append(request);
+								req = *_requests[fd];
 							}
 							//else add to _requests map
 							else
 							{
 								httpRequest *addReq = new httpRequest(req);
-								_requests[fd] = *addReq;
+								_requests[fd] = addReq;
 							}
 						}
 						//check if request is complete and if so, check if it is CGI or STATIC
@@ -285,7 +299,7 @@ void WebServer::handleConnections()
 
 								int fdPipe = cgiHandler->executeTest();
 
-								_requestsCGI[fdPipe] = *cgiHandler;
+								_requestsCGI[fdPipe] = cgiHandler;
 							}
 							if (req.type == "STATIC")
 							{
@@ -302,19 +316,20 @@ void WebServer::handleConnections()
 						}
 					}
 					//check if fd is in responseFd, if so, send response
-					std::map<int, HandleCGI>::iterator it = _requestsCGI.begin();
+					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
 					for(it; it != _requestsCGI.end(); ++it)
 					{
-						if (it->second._responseFd == events[i].data.fd)
+						if (it->second->_responseFd == events[i].data.fd)
 						{
-							if (it->second._responseCGI.size() > 0)
+							if (it->second->_responseCGI.size() > 0)
 							{
-								size_t wbytes = write(it->second._responseFd, it->second._responseCGI.c_str(), it->second._responseCGI.size());
+								size_t wbytes = write(it->second->_responseFd, it->second->_responseCGI.c_str(), it->second->_responseCGI.size());
 								if (wbytes <= 0)
 								{
 									if(wbytes == -1)
-										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(it->second._responseFd));
+										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(it->second->_responseFd));
 								}
+								delete _requestsCGI[it->first];
 								_requestsCGI.erase(it->first);
 								done = 1;
 							}
@@ -330,6 +345,7 @@ void WebServer::handleConnections()
 					close(events[i].data.fd);
 					if (_requests.find(events[i].data.fd) != _requests.end())
 					{
+						delete _requests[events[i].data.fd];
 						_requests.erase(events[i].data.fd);
 					}
 
@@ -346,5 +362,6 @@ void WebServer::run() {
 		throw std::runtime_error("epoll_create() failure");
 
 	addToEpollServers();
+	signal(SIGINT, WebServer::handleSignal);
 	handleConnections();
 }
