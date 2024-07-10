@@ -24,6 +24,33 @@ WebServer::WebServer(const std::vector<Server> &parsedServers) {
 }
 
 WebServer::~WebServer() {
+	if (isRunning)
+		isRunning = false;
+
+	std::map<int, HandleCGI*>::iterator itCGI = _requestsCGI.begin();
+	for (itCGI; itCGI != _requestsCGI.end(); ++itCGI)
+	{
+		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, itCGI->second->_pipefd[0], 0);
+		close(itCGI->second->_pipefd[0]);
+		delete itCGI->second;
+	}
+	this->_requestsCGI.clear();
+
+	std::map<int, httpRequest*>::iterator itReq = _requests.begin();
+	for (itReq; itReq != _requests.end(); ++itReq)
+	{
+		delete itReq->second;
+	}
+	this->_requests.clear();
+
+	std::map<int, std::vector<Server>>::iterator conit = this->_conections.begin();
+	for (conit; conit != this->_conections.end(); ++conit)
+	{
+		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, conit->first, 0);
+		close(conit->first);
+	}
+	this->_conections.clear();
+
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
 	{
