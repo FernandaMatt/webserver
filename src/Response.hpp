@@ -29,9 +29,9 @@ class Response {
         Response();
         ~Response();
 
-        void loadFromFile(const std::string& filePath);
+        void loadFromFile(const std::string& filePath, bool logError = true);
         void loadAutoIndex(std::string &path);
-        void loadErrorPage(int statusCode, Server server);
+        void loadErrorPage(int statusCode, Server server, bool logError = true);
         void loadDefaultErrorPage(int statusCode);
         const std::vector<char> getResponse() const;
 

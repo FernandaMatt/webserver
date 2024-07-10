@@ -20,13 +20,14 @@ std::vector<char> Response::stringToVector(const std::string& str) {
     return std::vector<char>(str.begin(), str.end());
 }
 
-void Response::loadFromFile(const std::string& filePath)
+void Response::loadFromFile(const std::string& filePath, bool logError)
 {
     _responseContent.clear();
 
     std::ifstream fileStream(filePath.c_str(), std::ios::binary);
     if (!fileStream) {
-        Logger::log(LOG_ERROR, "Error opening file: " + filePath);
+        if (logError)
+            Logger::log(LOG_ERROR, "Error opening file: " + filePath);
         loadDefaultErrorPage(404); //use throw
         return;
     }
@@ -167,7 +168,7 @@ bool Response::setResponseContent(std::ifstream &ifs, std::streamsize &size, con
     return true;
 }
 
-void Response::loadErrorPage(int statusCode, Server server) {
+void Response::loadErrorPage(int statusCode, Server server, bool logError) {
 
     _statusMessage.clear();
     _httpHeaders.clear();
@@ -176,7 +177,8 @@ void Response::loadErrorPage(int statusCode, Server server) {
     std::map<int, std::string> error_pages = server.get_error_pages();
 
     if (error_pages.find(statusCode) == error_pages.end()) {
-        Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(statusCode) + ". Loading default error page.");
+        if (logError)
+            Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(statusCode) + ". Loading default error page.");
         loadDefaultErrorPage(statusCode);
         return;
     }
@@ -184,7 +186,8 @@ void Response::loadErrorPage(int statusCode, Server server) {
     std::string error_page_path = error_pages[statusCode];
 
     if (error_page_path == "") {
-        Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(400) + ". Loading default error page.");
+        if (logError)
+            Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(400) + ". Loading default error page.");
         loadDefaultErrorPage(statusCode);
         return;
     }
@@ -201,7 +204,8 @@ void Response::loadErrorPage(int statusCode, Server server) {
 
     std::ifstream fileStream(error_page_full_path.c_str());
     if (!fileStream) {
-        Logger::log(LOG_WARNING, "Custom Error page set, but file not found. Loading default error page.");
+        if (logError)
+            Logger::log(LOG_WARNING, "Custom Error page set, but file not found. Loading default error page.");
         loadDefaultErrorPage(statusCode);
         return;
     }
@@ -210,7 +214,6 @@ void Response::loadErrorPage(int statusCode, Server server) {
 }
 
 void Response::loadDefaultErrorPage(int statusCode) {
-    _responseContent.clear();
     switch (statusCode) {
         case 400:
             setStatusMessage(STATUS_400);

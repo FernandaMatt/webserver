@@ -33,7 +33,7 @@ class HandleCGI {
 		char	    **convertEnv();
         void	    freeEnv(char **env);
         void        loadStaticErrorResponse(int statusCode, Response &response);
-        void        sendErrorResponse(int statusCode);
+        void        sendErrorResponse(int statusCode, int fd);
 
 	public:
 		HandleCGI();
