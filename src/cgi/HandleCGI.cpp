@@ -2,44 +2,49 @@
 
 HandleCGI::HandleCGI() {};
 
-HandleCGI::HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd) {
+HandleCGI::HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Server server) {
 	this->_request = parsedRequest;
     this->_fdEpool = fdEpool;
     this->_responseFd = responseFd;
 	this->_responseCGI = "";
+    this->_server = server;
 };
 
 HandleCGI::~HandleCGI() {};
 
 int HandleCGI::executeCGI() {
 
-
-    // Arguments for execve
-    // The first argument should be the name of the executable itself
-
-    // Environment variables for execve (can be NULL if not needed)
-    // char *const envp[] = { NULL };
+    std::string cgi_full_path = getCGIPath();
+    if (cgi_full_path.empty()) {
+        sendErrorResponse(404);
+        return -1;
+    }
 
 	//criar pipe
-	if (pipe(_pipefd) == -1) {
+	if (pipe(_pipefd) == -1) { //load right error pages, send responses, return -1
 		perror("pipe");
 		exit(EXIT_FAILURE);
 	}
 
 	//fork
 	pid_t pid = fork();
-	if (pid == -1) {
+	if (pid == -1) { //load right error pages, send responses, return -1
 		perror("fork");
 		exit(EXIT_FAILURE);
 	}
 
 	if (pid == 0) {
         // int pipeBody[2];
+        std::string interpreter_path = find_php_interpreter();
 
-        // char *path = strdup(_request.path.c_str());
-	    char *path = strdup("/bin/teste-cgi/test.php");
+        std::string php_exec = interpreter_path + " " + cgi_full_path;
 
-        char *const argv[] = { (char *)path, NULL };
+        char *cgi_exec = strdup(php_exec.c_str());
+	    // char *path = strdup("/bin/teste-cgi/test.php");
+
+        char *script_file = strdup(_request.CGIfilename.c_str());
+
+        char *const argv[] = { (char *)script_file, NULL };
 
         char **envp = buildEnv();
 
@@ -65,10 +70,11 @@ int HandleCGI::executeCGI() {
 
         
 
-		if (execve(path, argv, envp) == -1) {
+		if (execve(cgi_exec, argv, envp) == -1) {
 			perror("execve");
             freeEnv(envp);
-            free(path);
+            free(cgi_exec);
+            free(script_file);
 			exit(EXIT_FAILURE);
 		}
 
@@ -84,6 +90,32 @@ int HandleCGI::executeCGI() {
 		return _pipefd[0];
 	}
 	return -1;
+}
+
+std::string HandleCGI::getCGIPath() {
+    Location location;
+    if (!getCGILocation(location))
+        return "";
+
+    std::string cgi_path = location.get_cgi_path();
+    if (cgi_path.empty() || !isDirectory(cgi_path))
+        return "";
+
+    std::string cgi_full_path = cgi_path + _request.CGIfilename;
+    if (!isFile(cgi_full_path))
+        return "";
+    return cgi_full_path;
+}
+
+bool HandleCGI::getCGILocation(Location &location) {
+    std::vector<Location> locations = _server.get_location();
+    for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
+        if (_request.path == it->get_path()) {
+            location = *it;
+            return true;
+        }
+    }
+    return false;
 }
 
 char ** HandleCGI::buildEnv() {
@@ -129,4 +161,72 @@ void HandleCGI::freeEnv(char **env) {
         free(env[i]);
     }
     delete[] env;
+}
+
+void HandleCGI::loadStaticErrorResponse(int statusCode, Response &response) {
+
+    std::map<int, std::string> error_pages = _server.get_error_pages();
+    std::string error_page_path = error_pages[statusCode];
+
+    if (error_page_path == "") {
+        Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(400) + ". Loading default error page.");
+        response.loadDefaultErrorPage(statusCode);
+        return;
+    }
+
+    std::ifstream fileStream(error_page_path.c_str());
+    if (!fileStream) {
+        Logger::log(LOG_WARNING, "Custom Error page set, but file not found. Loading default error page.");
+        response.loadDefaultErrorPage(statusCode);
+        return;
+    }
+
+    response.loadFromFile(error_page_path);
+}
+
+void HandleCGI::sendErrorResponse(int statusCode) {
+    Response response;
+
+    loadStaticErrorResponse(404, response);
+
+    std::vector<char> responseContent;
+    responseContent = response.getResponse();
+    write(_responseFd, responseContent.data(), responseContent.size());
+}
+
+bool HandleCGI::isDirectory(std::string path) {
+    struct stat pathStat;
+    if (stat(path.c_str(), &pathStat) != 0) {
+        return false;
+    }
+    return S_ISDIR(pathStat.st_mode);
+}
+
+bool HandleCGI::isFile(std::string path) {
+    struct stat pathStat;
+    if (stat(path.c_str(), &pathStat) != 0) {
+        return false;
+    }
+    return S_ISREG(pathStat.st_mode);
+}
+
+std::string HandleCGI::find_php_interpreter() {
+    FILE* pipe = popen("which php", "r");
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    char buffer[128];
+    std::string result;
+    while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
+        result += buffer;
+    }
+    pclose(pipe);
+
+    // Remove trailing newline character
+    if (!result.empty() && result[result.size() - 1] == '\n') {
+        result.erase(result.size() - 1);
+    }
+
+    return result;
 }

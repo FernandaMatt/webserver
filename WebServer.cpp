@@ -263,7 +263,7 @@ void WebServer::handleConnections()
 						if (req.type == "CGI")
 						{
 							Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
-							HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd);
+							HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateRequest(_conections[events[i].data.fd], req.host));
 
 							int fdPipe = cgiHandler->executeCGI();
 

@@ -33,7 +33,8 @@ httpRequest RequestParser::parseRequest(std::string request)
         req.type = getResourceType(req.path);
         if (req.type == "CGI") {
             req.extraPath = getExtraPath(req.path);
-            req.path = req.path.substr(0, req.path.find(".php") + 4);
+            req.CGIfilename = getCGIfilename(req.path);
+            req.path = getCGIPath(req.path);
         }
         if (parsing_request[0] == '?') {
             req.queryString = getQueryString(parsing_request);
@@ -103,12 +104,33 @@ std::string RequestParser::getResourceType(std::string url)
     return "STATIC";
 }
 
+std::string RequestParser::getCGIfilename(std::string url)
+{
+    std::string filename;
+    size_t pos = url.find(".php");
+    if (pos == std::string::npos)
+        throw std::invalid_argument("Bad request");
+    filename = url.substr(0, pos + 4);
+    pos = filename.rfind("/");
+    return filename.substr(pos + 1, filename.size() - pos - 1);
+}
+
 std::string RequestParser::getExtraPath(std::string url)
 {
     size_t pos = url.find(".php");
     if (pos == std::string::npos)
         throw std::invalid_argument("Bad request");
     return url.substr(pos + 4, url.size() - pos - 4);
+}
+
+std::string RequestParser::getCGIPath(std::string url)
+{
+    size_t pos = url.find(".php");
+    if (pos == std::string::npos)
+        throw std::invalid_argument("Bad request");
+    std::string path_file = url.substr(0, pos);
+    pos = path_file.rfind("/");
+    return path_file.substr(0, pos);
 }
 
 std::string RequestParser::getQueryString(std::string &parsing_request)
