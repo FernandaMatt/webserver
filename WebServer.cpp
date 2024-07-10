@@ -216,6 +216,7 @@ void WebServer::handleConnections()
 
 		if (!isRunning)
 			break;
+
 		if (totalFD == -1)
 			throw std::runtime_error("epoll_wait() failure");
 
@@ -389,6 +390,6 @@ void WebServer::run() {
 		throw std::runtime_error("epoll_create() failure");
 
 	addToEpollServers();
-	signal(SIGINT, WebServer::handleSignal);
+	// signal(SIGINT, WebServer::handleSignal);
 	handleConnections();
 }
