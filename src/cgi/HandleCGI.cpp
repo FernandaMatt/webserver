@@ -14,6 +14,9 @@ HandleCGI::~HandleCGI() {};
 
 int HandleCGI::executeCGI() {
 
+    sendErrorResponse(404);
+    return -1;
+
     std::string cgi_full_path = getCGIPath();
     if (cgi_full_path.empty()) {
         sendErrorResponse(404);
@@ -30,6 +33,7 @@ int HandleCGI::executeCGI() {
 	pid_t pid = fork();
 	if (pid == -1) { //load right error pages, send responses, return -1
 		perror("fork");
+        //close pipe
 		exit(EXIT_FAILURE);
 	}
 
@@ -68,13 +72,12 @@ int HandleCGI::executeCGI() {
 
         // close(pipeBody[0]);
 
-        
-
 		if (execve(cgi_exec, argv, envp) == -1) {
 			perror("execve");
             freeEnv(envp);
             free(cgi_exec);
             free(script_file);
+            //return error page 500 internal server error
 			exit(EXIT_FAILURE);
 		}
 
@@ -163,31 +166,31 @@ void HandleCGI::freeEnv(char **env) {
     delete[] env;
 }
 
-void HandleCGI::loadStaticErrorResponse(int statusCode, Response &response) {
+// void HandleCGI::loadStaticErrorResponse(int statusCode, Response &response) {
 
-    std::map<int, std::string> error_pages = _server.get_error_pages();
-    std::string error_page_path = error_pages[statusCode];
+//     std::map<int, std::string> error_pages = _server.get_error_pages();
+//     std::string error_page_path = error_pages[statusCode];
 
-    if (error_page_path == "") {
-        Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(400) + ". Loading default error page.");
-        response.loadDefaultErrorPage(statusCode);
-        return;
-    }
+//     if (error_page_path == "") {
+//         Logger::log(LOG_INFO, "No error page found for error code " + std::to_string(400) + ". Loading default error page.");
+//         response.loadDefaultErrorPage(statusCode);
+//         return;
+//     }
 
-    std::ifstream fileStream(error_page_path.c_str());
-    if (!fileStream) {
-        Logger::log(LOG_WARNING, "Custom Error page set, but file not found. Loading default error page.");
-        response.loadDefaultErrorPage(statusCode);
-        return;
-    }
+//     std::ifstream fileStream(error_page_path.c_str());
+//     if (!fileStream) {
+//         Logger::log(LOG_WARNING, "Custom Error page set, but file not found. Loading default error page.");
+//         response.loadDefaultErrorPage(statusCode);
+//         return;
+//     }
 
-    response.loadFromFile(error_page_path);
-}
+//     response.loadFromFile(error_page_path);
+// }
 
 void HandleCGI::sendErrorResponse(int statusCode) {
     Response response;
 
-    loadStaticErrorResponse(404, response);
+    response.loadErrorPage(statusCode, _server);
 
     std::vector<char> responseContent;
     responseContent = response.getResponse();

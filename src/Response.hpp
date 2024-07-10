@@ -15,6 +15,7 @@
 # include "../Logger.hpp"
 # include "error_pages.hpp"
 # include "./utils/MimeTypes.hpp"
+# include "../Server.hpp"
 
 struct FileInfo {
     std::string name;
@@ -30,6 +31,7 @@ class Response {
 
         void loadFromFile(const std::string& filePath);
         void loadAutoIndex(std::string &path);
+        void loadErrorPage(int statusCode, Server server);
         void loadDefaultErrorPage(int statusCode);
         const std::vector<char> getResponse() const;
 

@@ -267,7 +267,13 @@ void WebServer::handleConnections()
 
 							int fdPipe = cgiHandler->executeCGI();
 
-							_requestsCGI[fdPipe] = *cgiHandler;
+                            if (fdPipe == -1)
+                            {
+                                Logger::log(LOG_WARNING, "CGI script failed to execute. Error response sent. Closing connection: " + std::to_string(events[i].data.fd));
+                                done = 1;
+                            }
+                            else
+                                _requestsCGI[fdPipe] = *cgiHandler;
 						}
 						if (req.type == "STATIC")
 						{
