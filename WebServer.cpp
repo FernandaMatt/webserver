@@ -301,7 +301,7 @@ void WebServer::handleConnections()
 					{
 						httpRequest req = RequestParser::parseRequest(request);
 						//check if request is incomplete
-						if (req.request_status == "incomplete")
+						if (req.request_status == "incomplete" || req.request_status == "")
 						{
 							//if request is incomplete, check if its is already in _requests, if so, append to its body
 							if (_requests.find(fd) != _requests.end())
@@ -314,6 +314,7 @@ void WebServer::handleConnections()
 							{
 								httpRequest *addReq = new httpRequest(req);
 								_requests[fd] = addReq;
+
 							}
 						}
 						//check if request is complete and if so, check if it is CGI or STATIC
@@ -343,6 +344,8 @@ void WebServer::handleConnections()
 							}
 						}
 					}
+					// else
+					// 	done = 1; //no request, close connection
 					//check if fd is in responseFd, if so, send response
 					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
 					for(it; it != _requestsCGI.end(); ++it)
