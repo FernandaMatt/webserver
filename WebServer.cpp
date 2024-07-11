@@ -36,7 +36,7 @@ WebServer::~WebServer() {
 	}
 	this->_requestsCGI.clear();
 
-	std::map<int, httpRequest*>::iterator itReq = _requests.begin();
+	std::map<int, std::string*>::iterator itReq = _requests.begin();
 	for (itReq; itReq != _requests.end(); ++itReq)
 	{
 		delete itReq->second;
@@ -303,16 +303,17 @@ void WebServer::handleConnections()
 						//check if request is incomplete
 						if (req.request_status == "incomplete" || req.request_status == "")
 						{
-							//if request is incomplete, check if its is already in _requests, if so, append to its body
+							//if req is incomplete, check if requests is already in _requests, if so, append it
 							if (_requests.find(fd) != _requests.end())
 							{
-								_requests[fd]->body.append(request);
-								req = *_requests[fd];
+								_requests[fd]->append(request);
+								httpRequest tmp = RequestParser::parseRequest(*_requests[fd]);
+								req = tmp;
 							}
 							//else add to _requests map
 							else
 							{
-								httpRequest *addReq = new httpRequest(req);
+								std::string *addReq = new std::string(request);
 								_requests[fd] = addReq;
 
 							}
