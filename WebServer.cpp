@@ -309,6 +309,7 @@ void WebServer::handleConnections()
 								_requests[fd]->append(request);
 								httpRequest tmp = RequestParser::parseRequest(*_requests[fd]);
 								req = tmp;
+
 							}
 							//else add to _requests map
 							else
@@ -394,6 +395,6 @@ void WebServer::run() {
 		throw std::runtime_error("epoll_create() failure");
 
 	addToEpollServers();
-	// signal(SIGINT, WebServer::handleSignal);
+	signal(SIGINT, WebServer::handleSignal);
 	handleConnections();
 }
