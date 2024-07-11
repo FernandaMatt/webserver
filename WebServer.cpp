@@ -193,12 +193,35 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT);
+	
+	//CHECAR COM A FERNANDA!!!!!
+	// check if total connections is greater than SOMAXCONN
+	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 8;
+	if (totalConnections >= SOMAXCONN)
+	{
+		if (newSockFD != -1)
+		{
+			Logger::log(LOG_WARNING, "Max connections reached, closing connection...");
+			Response response;
+			response.loadDefaultErrorPage(503);
+			close(newSockFD);
+		}
+		return ;
+	}
+
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
         _conections[newSockFD] = it->second;
 	else
-		throw std::runtime_error("Server socket fd not found!");
+	{
+		Logger::log(LOG_ERROR, "Server socket fd not found!");
+		Response response;
+		response.loadDefaultErrorPage(503);
+		close(newSockFD);
+		return ;
+	}
+
+	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
