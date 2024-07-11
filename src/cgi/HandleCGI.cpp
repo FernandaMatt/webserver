@@ -20,34 +20,39 @@ int HandleCGI::executeCGI() {
         return -1;
     }
 
-	//criar pipe
-	if (pipe(_pipefd) == -1) { //load right error pages, send responses, return -1
-		perror("pipe");
-		exit(EXIT_FAILURE);
+	if (pipe(_pipefd) == -1) {
+		Logger::log(LOG_ERROR, "pipe() failed");
+        sendErrorResponse(500, _responseFd);
+		return -1;
 	}
 
-	//fork
+    char *path = strdup(cgi_full_path.c_str());
+
+    char *script_file = strdup(_request.CGIfilename.c_str());
+
+    char *const argv[] = { (char *)script_file, NULL };
+
+    char **envp = buildEnv();
+
 	pid_t pid = fork();
-	if (pid == -1) { //load right error pages, send responses, return -1
-		perror("fork");
-        //close pipe
-		exit(EXIT_FAILURE);
+	if (pid == -1) {
+        Logger::log(LOG_ERROR, "fork() failed");
+        close(_pipefd[0]);
+        close(_pipefd[1]);
+        sendErrorResponse(500, _responseFd);
+        return -1;
 	}
 
 	if (pid == 0) {
         // int pipeBody[2];
-        // std::string interpreter_path = find_php_interpreter();
 
-        // std::string php_exec = interpreter_path + " " + cgi_full_path;
+	    // char *path = strdup(cgi_full_path.c_str());
 
-        // char *cgi_exec = strdup(php_exec.c_str());
-	    char *path = strdup(cgi_full_path.c_str());
+        // char *script_file = strdup(_request.CGIfilename.c_str());
 
-        char *script_file = strdup(_request.CGIfilename.c_str());
+        // char *const argv[] = { (char *)script_file, NULL };
 
-        char *const argv[] = { (char *)script_file, NULL };
-
-        char **envp = buildEnv();
+        // char **envp = buildEnv();
 
 		close(_pipefd[0]);
 
@@ -70,6 +75,7 @@ int HandleCGI::executeCGI() {
         // close(pipeBody[0]);
 
 		if (execve(path, argv, envp) == -1) {
+		// if (true) {
 			perror("execve");
             freeEnv(envp);
             free(path);
@@ -120,32 +126,33 @@ bool HandleCGI::getCGILocation(Location &location) {
 }
 
 char ** HandleCGI::buildEnv() {
-    std::vector<std::string> env;
 
     if (_request.body.size() > 0)
-        env.push_back("CONTENT_LENGTH=" + std::to_string(_request.body.size()));
-        env.push_back("CONTENT_TYPE=");
+        _env.push_back("CONTENT_LENGTH=" + std::to_string(_request.body.size()));
+        _env.push_back("CONTENT_TYPE=");
     if (_request.headers.find("Content-Type") != _request.headers.end())
-        env.push_back("CONTENT_TYPE=" + _request.headers["Content-Type"]);
-    env.push_back("GATEWAY_INTERFACE=CGI/1.1");
-    env.push_back("PATH_INFO=" + _request.extraPath);
+        _env.push_back("CONTENT_TYPE=" + _request.headers["Content-Type"]);
+    _env.push_back("GATEWAY_INTERFACE=CGI/1.1");
+    _env.push_back("PATH_INFO=" + _request.extraPath);
     //PATH_TRANSLATED ??
-    env.push_back("QUERY_STRING=" + _request.queryString);
+    _env.push_back("QUERY_STRING=" + _request.queryString);
     //REMOTE_ADDR ??
-    env.push_back("REQUEST_METHOD=" + std::to_string(_request.method));
-    env.push_back("SCRIPT_NAME=" + _request.path);
-    env.push_back("SERVER_NAME=" + _request.host);
-    env.push_back("SERVER_PORT=" + _request.port);
-    env.push_back("SERVER_PROTOCOL=" + _request.version);
-    env.push_back("SERVER_SOFTWARE=webserv/1.0");
+    _env.push_back("REQUEST_METHOD=" + std::to_string(_request.method));
+    _env.push_back("SCRIPT_NAME=" + _request.path);
+    _env.push_back("SERVER_NAME=" + _request.host);
+    _env.push_back("SERVER_PORT=" + _request.port);
+    _env.push_back("SERVER_PROTOCOL=" + _request.version);
+    _env.push_back("SERVER_SOFTWARE=webserv/1.0");
     for (std::map<std::string, std::string>::iterator it = _request.headers.begin(); it != _request.headers.end(); it++)
-        env.push_back("HTTP_" + it->first + "=" + it->second);
+        _env.push_back("HTTP_" + it->first + "=" + it->second);
 
 
-    //print env
-    for (std::vector<std::string>::iterator it = env.begin(); it != env.end(); ++it)
+    //print _env
+    for (std::vector<std::string>::iterator it = _env.begin(); it != _env.end(); ++it)
         std::cout << *it << std::endl;
-    return convertEnv();
+    
+    char **env_char = convertEnv();
+    return env_char;
 }
 
 char ** HandleCGI::convertEnv() {
@@ -190,23 +197,8 @@ bool HandleCGI::isFile(std::string path) {
     return S_ISREG(pathStat.st_mode);
 }
 
-// std::string HandleCGI::find_php_interpreter() {
-//     FILE* pipe = popen("which php", "r");
-//     if (!pipe) {
-//         throw std::runtime_error("popen() failed!");
-//     }
+std::string HandleCGI::getCGIResponse() {
+    ResponseChecker responseChecker;
 
-//     char buffer[128];
-//     std::string result;
-//     while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
-//         result += buffer;
-//     }
-//     pclose(pipe);
-
-//     // Remove trailing newline character
-//     if (!result.empty() && result[result.size() - 1] == '\n') {
-//         result.erase(result.size() - 1);
-//     }
-
-//     return result;
-// }
+    return "";
+}

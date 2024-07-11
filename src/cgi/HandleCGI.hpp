@@ -5,6 +5,7 @@
 # include "../../Server.hpp"
 # include "../../Location.hpp"
 # include "../ResponseBuilder.hpp"
+# include "ResponseChecker.hpp"
 # include <vector>
 # include <string>
 # include <iostream>
@@ -28,11 +29,9 @@ class HandleCGI {
         std::string getCGIPath();
         bool        isDirectory(std::string path);
         bool        isFile(std::string path);
-        std::string find_php_interpreter();
 		char        **buildEnv();
 		char	    **convertEnv();
         void	    freeEnv(char **env);
-        void        loadStaticErrorResponse(int statusCode, Response &response);
         void        sendErrorResponse(int statusCode, int fd);
 
 	public:
@@ -41,6 +40,8 @@ class HandleCGI {
 		HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Server server);
 
 		int         executeCGI();
+        std::string getCGIResponse();
+
         int         _pipefd[2];
         int         _responseFd;
         Server      _server;
