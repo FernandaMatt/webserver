@@ -154,7 +154,7 @@
 <head>\
     <meta charset='UTF-8'>\
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>\
-    <title>404 Request Entity Too Large</title>\
+    <title>413 Request Entity Too Large</title>\
     <style>\
         body {\
             font-family: Arial, sans-serif;\
@@ -170,7 +170,7 @@
     </style>\
 </head>\
 <body>\
-    <h1>404</h1>\
+    <h1>413</h1>\
     <p>Request Entity Too Large</p>\
     <p>by Fe, Iza e Mari</p>\
 </body>\
