@@ -434,7 +434,7 @@ std::map<std::string, std::vector<char>>   ResponseBuilder::postMultipartBody(st
             if (part_end == std::string::npos)
                 part_end = body_content.size();
             else
-                part_end -= 2;
+                part_end -= 4;
             if (part_end < part_start)
                 throw BadRequestException(); //invalid format
             //add o conteudo no vetor
@@ -480,7 +480,7 @@ std::string  ResponseBuilder::getFileName(std::string& filename, std::string con
         if (!_location.get_root().empty())
             path = _location.get_root() + '/' + _location.get_upload_path() + '/';
         else
-            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';        
+            path = _location.get_alias() + '/';        
     }
     else
         path = _location.get_upload_path() + '/';
@@ -608,7 +608,7 @@ void ResponseBuilder::processDELETE() {
             complete_path = _location.get_alias();
     }
 
-    if (isFile(complete_path)) {
+    if (isFile(complete_path) && access(complete_path.c_str(), F_OK)) {
        if (std::remove(complete_path.c_str()) != 0)
             throw InternalServerErrorException();
     }
