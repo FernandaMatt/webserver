@@ -2,6 +2,7 @@
 
 Server::Server() {
 	this->_client_max_body_size = -1;
+	this->_timeout = -1;
 }
 
 Server::~Server() {
@@ -82,14 +83,14 @@ void    Server::set_root(std::string root) {
 }
 
 void    Server::set_client_max_body_size(std::string client_max_body_size) {
-	bool mb = false;
+	bool has_suffix_m = false;
 
 	if (_client_max_body_size != -1)
 		throw std::runtime_error("Error in config file: duplicate directive client_max_body_size");
 	if (client_max_body_size[client_max_body_size.size() - 1] == 'M' || client_max_body_size[client_max_body_size.size() - 1] == 'm')
-		mb = true;
+		has_suffix_m = true;
 	for (size_t pos = 0; pos < client_max_body_size.size(); pos++) {
-		if (mb == false) {
+		if (has_suffix_m == false) {
 			if (!std::isdigit(client_max_body_size[pos]))
 				throw std::runtime_error("Error in config file: invalid client max body size");
 		} else {
@@ -97,9 +98,58 @@ void    Server::set_client_max_body_size(std::string client_max_body_size) {
 				throw std::runtime_error("Error in config file: invalid client max body size");
 		}
 	}
-	if (mb == true) _client_max_body_size = std::strtoul(client_max_body_size.c_str(), NULL, 0) * 1000000;
-	else _client_max_body_size = std::strtoul(client_max_body_size.c_str(), NULL, 0);
+
+	char *end;
+	errno = 0;
+	long result = std::strtol(client_max_body_size.c_str(), &end, 10);
+	if (errno == ERANGE) {
+        if (result == LONG_MAX) {
+            throw std::runtime_error("Error: client max body size too large");
+        } else if (result == LONG_MIN) {
+            throw std::runtime_error("Error: client max body size too small");
+        }
+    }
+    if (*end != '\0' && *end != 'M' && *end != 'm')
+        throw std::runtime_error("Error: invalid character in client max body size");
+	if (has_suffix_m == true) 
+		result *= 1000000;
+	_client_max_body_size = result;	
 }
+
+void    Server::set_timeout(std::string timeout) {
+	bool has_suffix_s = false;
+
+    if (_timeout != -1)
+        throw std::runtime_error("Error in config file: duplicate directive keepalive_timeout");
+    if (timeout[timeout.size() - 1] == 's')
+        has_suffix_s = true;
+	for (size_t pos = 0; pos < timeout.size(); pos++) {
+		if (has_suffix_s == false) {
+			if (!std::isdigit(timeout[pos]))
+				throw std::runtime_error("Error in config file: invalid keepalive_timeout");
+		} else {
+			if (pos != timeout.size() - 1 && !std::isdigit(timeout[pos]))
+				throw std::runtime_error("Error in config file: invalid keepalive_timeout");
+		}
+	}
+
+    char* end;
+    errno = 0;
+    long result = std::strtol(timeout.c_str(), &end, 10);
+    if (errno == ERANGE) {
+        if (result == LONG_MAX) {
+            throw std::runtime_error("Error: timeout value too large");
+        } else if (result == LONG_MIN) {
+            throw std::runtime_error("Error: timeout value too small");
+        }
+    }
+    if (*end != '\0' && *end != 's')
+        throw std::runtime_error("Error: invalid character in keepalive_timeout");
+    if (result < 0 || result > INT_MAX)
+        throw std::runtime_error("Error: timeout value out of range");
+    _timeout = static_cast<int>(result);
+}
+
 
 void    Server::set_autoindex(std::string autoindex) {
 	if (!_autoindex.empty())
@@ -191,57 +241,6 @@ void    Server::set_host_port(const std::string &hostPort) {
 	this->_host_port = hostPort;
 }
 
-// void    Server::set_sock_fd() {
-// 	for (size_t i = 0; i < _listeners.size(); i++) {
-// 		struct addrinfo hints;
-// 		struct addrinfo *result;
-// 		struct addrinfo *rp;
-// 		int             status;
-
-// 		memset(&hints, 0, sizeof(hints));
-// 		hints.ai_family = AF_UNSPEC;
-// 		hints.ai_socktype = SOCK_STREAM;
-// 		hints.ai_flags = AI_PASSIVE;
-// 		hints.ai_protocol = 0;
-// 		int sock_fd = -1;
-
-// 		status = getaddrinfo(_listeners[i].host.c_str(), _listeners[i].port.c_str(), &hints, &result);
-// 		if (status != 0) {
-// 			Logger::log(LOG_ERROR, gai_strerror(status));
-// 			throw std::runtime_error("Error: getaddrinfo()");
-// 		}
-
-// 		for (rp = result; rp != NULL; rp = rp->ai_next) {
-// 			sock_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-
-// 			if(sock_fd == -1)
-// 				continue;
-
-// 			int option = 1;
-// 			if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1){
-// 				Logger::log(LOG_ERROR, "setsockopt() failure");
-// 				close(sock_fd);
-// 				freeaddrinfo(result);
-// 				throw std::runtime_error("Error: setsockopt()");
-// 			}
-
-// 			if (bind(sock_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
-// 				_sock_fd.push_back(sock_fd);
-// 				break ;
-// 			}
-// 		}
-
-// 		if(rp == NULL){ //No address succeded
-// 			if(sock_fd != -1)
-// 				close(sock_fd);
-// 			_sock_fd.push_back(-1);
-// 			Logger::log(LOG_ERROR, "Could not bind " + _listeners[i].host + ":" + _listeners[i].port);
-// 		}
-
-// 		freeaddrinfo(result);
-// 	}
-// }
-
 //getters
 
 const std::vector<Listen>&  Server::get_listeners() const {return _listeners;}
@@ -249,6 +248,8 @@ const std::vector<Listen>&  Server::get_listeners() const {return _listeners;}
 std::string&    Server::get_root() {return _root;}
 
 long    Server::get_client_max_body_size() {return _client_max_body_size;}
+
+int	Server::get_timeout() {return _timeout;}
 
 std::string&    Server::get_autoindex() {return _autoindex;}
 
@@ -268,8 +269,6 @@ std::string     Server::get_error_page_path(int error_code) {
 std::vector<Location>&  Server::get_location() {return _locations;}
 
 std::string Server::get_host_port() {return this->_host_port;}
-
-// const std::vector<int>& Server::get_sock_fd() const {return _sock_fd;}
 
 //methods
 
@@ -297,6 +296,8 @@ void    Server::set_default_directives(){
         set_autoindex("off");
     if (_client_max_body_size == -1)
         set_client_max_body_size("1m");
+	if (_timeout == -1)
+		set_timeout("60s");
     if (_root.empty())
         set_root("/");
 
@@ -333,9 +334,14 @@ void    Server::set_default_directives(){
         if (_locations[i].get_autoindex().empty())
             _locations[i].set_autoindex(_autoindex);
         if (_locations[i].get_client_max_body_size() == -1) {
-            std::stringstream ss;
-            ss << _client_max_body_size;
-            _locations[i].set_client_max_body_size(ss.str());
+            std::stringstream ss_body_size;
+            ss_body_size << _client_max_body_size;
+            _locations[i].set_client_max_body_size(ss_body_size.str());
+        }
+		if (_locations[i].get_timeout() == -1) {
+            std::stringstream ss_timeout;
+            ss_timeout << _timeout;
+            _locations[i].set_timeout(ss_timeout.str());
         }
         if (_locations[i].get_index().empty()) {
             std::string index;
@@ -397,37 +403,34 @@ void    Server::set_default_directives(){
 void    Server::print_all_directives() const {
 
 	for(size_t i = 0; i < _listeners.size(); i++){
-		std::cout << "   listen: " << _listeners[i].host << ":" << _listeners[i].port << std::endl;
+		std::cout << BLUE << "listen: " << _listeners[i].host << ":" << RST << _listeners[i].port << std::endl;
 	}
-	// for(size_t i = 0; i < _sock_fd.size(); i++)
-	// 	std::cout << "   sock_fd [ " << i  << " ] = " << _sock_fd[i] << std::endl;
-
-    std::cout << "   root: " << _root << std::endl;
-    std::cout << "   client_max_body_size: " << _client_max_body_size << std::endl;
-    std::cout << "   autoindex " << _autoindex << std::endl;
-    std::cout << "   server_name [ size = " << _server_name.size() << " ]: ";
+    std::cout << BLUE << "root: " << RST << _root << std::endl;
+    std::cout << BLUE << "client_max_body_size: " << RST << _client_max_body_size << std::endl;
+    std::cout << BLUE << "timeout: " << RST << _timeout << std::endl;
+	std::cout << BLUE << "autoindex: " << RST << _autoindex << std::endl;
+    std::cout << BLUE << "server_name [ size = " << _server_name.size() << " ]: ";
     for (size_t i = 0; i < _server_name.size(); i++) {
         std::cout << _server_name[i] << " ";
     }
     std::cout << std::endl;
-    std::cout << "   index [ size = " << _index.size() << " ]: ";
+    std::cout << BLUE << "index [ size = " << _index.size() << " ]: ";
     for (size_t i = 0; i < _index.size(); i++) {
-        std::cout << _index[i] << " ";
+        std::cout << RST << _index[i] << " ";
     }
 
     std::cout << std::endl;
     std::map<int, std::string>::const_iterator it;
     for (it = _error_pages.begin(); it != _error_pages.end(); it++) {
-        std::cout << "   error_page [ " << it->first << " ]: " << it->second << std::endl;
+        std::cout << BLUE << "error_page [ " << it->first << " ]: " << RST << it->second << std::endl;
     }
     std::cout << std::endl;
-    std::cout << "   locations [ size = " << _locations.size() << " ]" << std::endl;
+    std::cout << BLUE << "locations [ size = " << _locations.size() << BLUE << " ]" << RST << std::endl;
     for (size_t i = 0; i < _locations.size(); i++) {
-        std::cout << "   location " << _locations[i].get_path() << " {" << std::endl;
+        std::cout << BLUE << "location " << RST << _locations[i].get_path() << " {" << std::endl;
         _locations[i].print_all_directives();
     }
 
-	std::cout << "host_port: " << this->_host_port << std::endl;
-
+	std::cout << BLUE << "host_port: " << RST << this->_host_port << std::endl;
     std::cout << std::endl;
 }

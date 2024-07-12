@@ -138,6 +138,8 @@ void    Parser::set_server_directives(std::string &key, std::string &value, Serv
         server.set_root(value);
     else if (key == "client_max_body_size")
         server.set_client_max_body_size(value);
+    else if (key == "keepalive_timeout")
+        server.set_timeout(value);
     else if (key == "server_name")
         server.set_server_name(value);
     else if (key == "index")
@@ -163,6 +165,8 @@ void    Parser::set_location_directives(std::string &key, std::string &value, Lo
         location.set_alias(value);
     else if (key == "client_max_body_size")
         location.set_client_max_body_size(value);
+    else if (key == "keepalive_timeout")
+        location.set_timeout(value);
     else if (key == "index")
         location.set_index(value);
     else if (key == "autoindex")
@@ -223,7 +227,7 @@ void    Parser::parse_directives(std::string const &server_block) {
             continue;
         }
         else if (key == "listen" || key == "server_name" || key == "index" ||
-                    key == "autoindex" || key == "root" ||
+                    key == "autoindex" || key == "root" || key == "keepalive_timeout" ||
                     key == "client_max_body_size" || key == "error_page")
             set_server_directives(key, value, server);
         //invalid directive or other error
@@ -269,7 +273,8 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
         }
         else if (key == "root" || key == "alias" || key == "index" || key == "autoindex" ||
                     key == "allow_methods" || key == "client_max_body_size" ||
-                    key == "error_page" || key == "cgi_path" || key == "cgi_ext" || key == "upload_path")
+                    key == "error_page" || key == "cgi_path" || key == "cgi_ext" ||
+                    key == "upload_path" || key == "keepalive_timeout")
             set_location_directives(key, value, location);
         //invalid directive or other error
         else
