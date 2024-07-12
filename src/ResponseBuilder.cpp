@@ -480,7 +480,7 @@ std::string  ResponseBuilder::getFileName(std::string& filename, std::string con
         if (!_location.get_root().empty())
             path = _location.get_root() + '/' + _location.get_upload_path() + '/';
         else
-            path = _location.get_alias() + '/';        
+            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';
     }
     else
         path = _location.get_upload_path() + '/';
