@@ -26,13 +26,6 @@ int HandleCGI::executeCGI() {
 		return -1;
 	}
 
-    char *path = strdup(cgi_full_path.c_str());
-
-    char *script_file = strdup(_request.CGIfilename.c_str());
-
-    char *const argv[] = { (char *)script_file, NULL };
-
-    char **envp = buildEnv();
 
 	pid_t pid = fork();
 	if (pid == -1) {
@@ -44,15 +37,15 @@ int HandleCGI::executeCGI() {
 	}
 
 	if (pid == 0) {
-        // int pipeBody[2];
+        int pipeBody[2];
 
-	    // char *path = strdup(cgi_full_path.c_str());
+        char *path = strdup(cgi_full_path.c_str());
 
-        // char *script_file = strdup(_request.CGIfilename.c_str());
+        char *script_file = strdup(_request.CGIfilename.c_str());
 
-        // char *const argv[] = { (char *)script_file, NULL };
+        char *const argv[] = { (char *)script_file, NULL };
 
-        // char **envp = buildEnv();
+        char **envp = buildEnv();
 
 		close(_pipefd[0]);
 
@@ -60,19 +53,19 @@ int HandleCGI::executeCGI() {
 
 		close(_pipefd[1]);
 
-        // if (pipe(pipeBody) == -1) {
-        //     perror("pipe");
-        //     exit(EXIT_FAILURE);
-        // }
+        if (pipe(pipeBody) != -1) {
 
-        // dup2(pipeBody[0], STDIN_FILENO);
+            dup2(pipeBody[0], STDIN_FILENO);
+            close(pipeBody[0]);
+        }
 
-        // if (write(pipeBody[1], _request.body.c_str(), _request.body.size()) <= 0)
-        //     throw std::runtime_error("write() failure");
+        if (_request.body.size() > 0) {
+            Logger::log(LOG_INFO, "Request body: " + _request.body);
+            if (write(pipeBody[1], _request.body.c_str(), _request.body.size()) <= 0)
+                Logger::log(LOG_ERROR, "write() failed");
+        }
 
-        // close(pipeBody[1]);
-
-        // close(pipeBody[0]);
+        close(pipeBody[1]);
 
 		if (execve(path, argv, envp) == -1) {
 		// if (true) {
