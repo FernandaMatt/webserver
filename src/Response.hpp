@@ -34,6 +34,7 @@ class Response {
         void loadErrorPage(int statusCode, Server server, bool logError = true);
         void loadDefaultErrorPage(int statusCode);
         const std::vector<char> getResponse() const;
+        int getResponseSize() const;
 
         void setStatusMessage(const char *statusMessage); //see if i can receive the macro as string
         void setHttpHeaders(const char *httpHeaders);

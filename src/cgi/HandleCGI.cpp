@@ -137,7 +137,7 @@ char ** HandleCGI::buildEnv() {
     //PATH_TRANSLATED ??
     _env.push_back("QUERY_STRING=" + _request.queryString);
     //REMOTE_ADDR ??
-    _env.push_back("REQUEST_METHOD=" + std::to_string(_request.method));
+    _env.push_back("REQUEST_METHOD=" + getMethod(_request.method));
     _env.push_back("SCRIPT_NAME=" + _request.path);
     _env.push_back("SERVER_NAME=" + _request.host);
     _env.push_back("SERVER_PORT=" + _request.port);
@@ -197,8 +197,46 @@ bool HandleCGI::isFile(std::string path) {
     return S_ISREG(pathStat.st_mode);
 }
 
-std::string HandleCGI::getCGIResponse() {
-    ResponseChecker responseChecker;
+Response HandleCGI::getCGIResponse() {
+    Response response;
 
+    if (!checkResponse())
+        response.loadErrorPage(500, _server, false);
+    else {
+        response.setStatusMessage("HTTP/1.1 200 OK\r\n");
+        response.setHttpHeaders(getCGIHeaders());
+        response.setResponseContent(getCGIBody());
+    }
+
+    return response;
+}
+
+bool HandleCGI::checkResponse() {
+    size_t pos = _responseCGI.find("Content-Type:");
+    size_t header_end = _responseCGI.find("\r\n\r\n");
+    if (header_end == std::string::npos)
+        header_end = _responseCGI.find("\n\n");
+    if (pos == std::string::npos || pos > header_end)
+        return false;
+    return true;
+}
+
+std::string HandleCGI::getCGIHeaders() {
+    size_t header_end = _responseCGI.find("\r\n\r\n");
+    return _responseCGI.substr(0, header_end + 4);
+}
+
+std::string HandleCGI::getCGIBody() {
+    size_t header_end = _responseCGI.find("\r\n\r\n");
+    return _responseCGI.substr(header_end + 4);
+}
+
+std::string HandleCGI::getMethod(int method) {
+    if (method == GET)
+        return "GET";
+    else if (method == POST)
+        return "POST";
+    else if (method == DELETE)
+        return "DELETE";
     return "";
 }

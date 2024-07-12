@@ -296,7 +296,11 @@ void WebServer::handleConnections()
 						{
 							if (it->second._responseCGI.size() > 0)
 							{
-								size_t wbytes = write(it->second._responseFd, it->second._responseCGI.c_str(), it->second._responseCGI.size());
+                                Response response;
+                                response = it->second.getCGIResponse();
+                                char * test = strdup(response.getResponse().data());
+                                size_t testsize = response.getResponseSize();
+								size_t wbytes = write(it->second._responseFd, response.getResponse().data(), response.getResponseSize());
 								if (wbytes <= 0)
 								{
 									if(wbytes == -1)

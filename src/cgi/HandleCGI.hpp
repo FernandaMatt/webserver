@@ -5,7 +5,6 @@
 # include "../../Server.hpp"
 # include "../../Location.hpp"
 # include "../ResponseBuilder.hpp"
-# include "ResponseChecker.hpp"
 # include <vector>
 # include <string>
 # include <iostream>
@@ -33,6 +32,10 @@ class HandleCGI {
 		char	    **convertEnv();
         void	    freeEnv(char **env);
         void        sendErrorResponse(int statusCode, int fd);
+        bool        checkResponse();
+        std::string getCGIHeaders();
+        std::string getCGIBody();
+        std::string getMethod(int method);
 
 	public:
 		HandleCGI();
@@ -40,7 +43,7 @@ class HandleCGI {
 		HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Server server);
 
 		int         executeCGI();
-        std::string getCGIResponse();
+        Response    getCGIResponse();
 
         int         _pipefd[2];
         int         _responseFd;

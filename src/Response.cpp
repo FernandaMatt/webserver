@@ -243,6 +243,10 @@ void Response::loadDefaultErrorPage(int statusCode) {
     }
 }
 
+int Response::getResponseSize() const {
+    return _statusMessage.size() + _httpHeaders.size() + _responseContent.size();
+}
+
 const std::vector<char> Response::getResponse() const {
     std::vector<char> response;
     response.insert(response.end(), _statusMessage.begin(), _statusMessage.end());
