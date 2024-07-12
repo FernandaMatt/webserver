@@ -48,7 +48,7 @@ httpRequest RequestParser::parseRequest(std::string request)
 		return req;
 	}
 	req.statusCode = 200;
-    req.printRequest();
+    //req.printRequest();
 	return req;
 }
 
