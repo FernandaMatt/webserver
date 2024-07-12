@@ -62,7 +62,7 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
                 fileInfo.lastModTime = fileStat.st_mtime;
                 fileInfo.size = fileStat.st_size;
                 filesInfo.push_back(fileInfo);
-            } 
+            }
         }
         closedir(dir);
     } else {
@@ -97,7 +97,7 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
 void Response::loadAutoIndex(std::string &path) {
     std::vector<FileInfo> filesInfo = getFilesInDirectory(path);
     std::string currentDir = "/" + filesInfo[0].name + "/";
-    
+
     std::string autoIndex = "<html><head><title>Index</title>";
     autoIndex += "<style>table { border-collapse: collapse; } th, td { padding: 10px; }</style>";
     autoIndex += "</head><body><h1>Index of " + currentDir + "</h1>";
@@ -219,7 +219,12 @@ void Response::loadDefaultErrorPage(int statusCode) {
             setStatusMessage(STATUS_400);
             setHttpHeaders(HEADER_400);
             setResponseContent(HTML_400);
-            break;        
+            break;
+        case 403:
+            setStatusMessage(STATUS_403);
+            setHttpHeaders(HEADER_403);
+            setResponseContent(HTML_403);
+            break;
         case 404:
             setStatusMessage(STATUS_404);
             setHttpHeaders(HEADER_404);
@@ -230,10 +235,10 @@ void Response::loadDefaultErrorPage(int statusCode) {
             setHttpHeaders(HEADER_405);
             setResponseContent(HTML_405);
             break;
-        case 403:
-            setStatusMessage(STATUS_403);
-            setHttpHeaders(HEADER_403);
-            setResponseContent(HTML_403);
+        case 413:
+            setStatusMessage(STATUS_413);
+            setHttpHeaders(HEADER_413);
+            setResponseContent(HTML_413);
             break;
         default:
             setStatusMessage(STATUS_500);

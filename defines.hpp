@@ -46,6 +46,7 @@ typedef struct httpRequest
 	std::string port;
 	std::string body;
     std::string type;
+	std::string request_status;
 	int statusCode;
 
 	void printRequest()
@@ -70,6 +71,7 @@ typedef struct httpRequest
 		std::cout << BLUE << "Host: " << RST << host << std::endl;
 		std::cout << BLUE << "Port: " << RST << port << std::endl;
 		std::cout << BLUE << "Body: " << RST << body << std::endl;
+		std::cout << BLUE << "Request status: " << RST << request_status << std::endl;
 		std::cout << BLUE << "Status Code: " << RST << statusCode << std::endl;
 	}
 }				httpRequest;

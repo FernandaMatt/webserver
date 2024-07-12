@@ -154,7 +154,7 @@
 <head>\
     <meta charset='UTF-8'>\
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>\
-    <title>404 Request Entity Too Large</title>\
+    <title>413 Request Entity Too Large</title>\
     <style>\
         body {\
             font-family: Arial, sans-serif;\
@@ -170,7 +170,7 @@
     </style>\
 </head>\
 <body>\
-    <h1>404</h1>\
+    <h1>413</h1>\
     <p>Request Entity Too Large</p>\
     <p>by Fe, Iza e Mari</p>\
 </body>\
@@ -259,6 +259,35 @@
 <body>\
     <h1>502</h1>\
     <p>Bad Gateway</p>\
+    <p>by Fe, Iza e Mari</p>\
+</body>\
+</html>"
+
+#define STATUS_503 "HTTP/1.1 503 Bad Gateway\r\n"
+#define HEADER_503 "Content-Type: text/html\r\nContent-Length:527 \r\n\r\n"
+#define HTML_503 "<!DOCTYPE html>\
+<html lang='en'>\
+<head>\
+    <meta charset='UTF-8'>\
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\
+    <title>503 Service Unavailable</title>\
+    <style>\
+        body {\
+            font-family: Arial, sans-serif;\
+            text-align: center;\
+            margin-top: 50px;\
+        }\
+        h1 {\
+            font-size: 100px;\
+        }\
+        p {\
+            font-size: 20px;\
+        }\
+    </style>\
+</head>\
+<body>\
+    <h1>503</h1>\
+    <p>Service Unavailable</p>\
     <p>by Fe, Iza e Mari</p>\
 </body>\
 </html>"
