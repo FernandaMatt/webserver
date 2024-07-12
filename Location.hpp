@@ -1,9 +1,12 @@
 #ifndef LOCATION_HPP
 # define LOCATION_HPP
+# include "defines.hpp"
 # include <iostream>
-#include <map>
-#include <vector>
-#include <sys/stat.h>
+# include <map>
+# include <vector>
+# include <sys/stat.h>
+# include <climits>
+
 
 class Location {
     public:
@@ -16,6 +19,7 @@ class Location {
         void    set_root(std::string root);
         void    set_alias(std::string alias);
         void    set_client_max_body_size(std::string client_max_body_size);
+        void    set_timeout(std::string timeout);
         void    set_autoindex(std::string autoindex);
         void    set_index(std::string index);
         void    set_error_page(std::string error_pages);
@@ -29,6 +33,7 @@ class Location {
         std::string&                get_root();
         std::string&                get_alias();
         long                        get_client_max_body_size();
+        int                         get_timeout(); // in seconds
         std::string&                get_autoindex();
         std::vector<std::string>&   get_index();
         std::map<int, std::string>& get_error_pages();
@@ -47,6 +52,7 @@ class Location {
         std::string                 _root;
         std::string                 _alias;
         long                        _client_max_body_size;
+        int                         _timeout;
         std::string                 _autoindex;
         std::vector<std::string>    _index;
         std::vector<std::string>    _methods;

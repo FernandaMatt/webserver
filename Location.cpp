@@ -2,6 +2,7 @@
 
 Location::Location() {
     _client_max_body_size = -1;
+    _timeout = -1;
 }
 
 Location::~Location() {
@@ -90,23 +91,71 @@ void    Location::set_alias(std::string alias) {
 }
 
 void    Location::set_client_max_body_size(std::string client_max_body_size) {
-    bool mb = false;
+	bool has_suffix_m = false;
 
-    if (_client_max_body_size != -1)
-        throw std::runtime_error("Error in config file: duplicate directive client_max_body_size");
-    if (client_max_body_size[client_max_body_size.size() - 1] == 'M' || client_max_body_size[client_max_body_size.size() - 1] == 'm')
-        mb = true;
-    for (size_t pos = 0; pos < client_max_body_size.size(); pos++) {
-        if (mb == false) {
-            if (!std::isdigit(client_max_body_size[pos]))
-                throw std::runtime_error("Error in config file: invalid location client max body size");
-        } else {
-            if (pos != client_max_body_size.size() - 1 && !std::isdigit(client_max_body_size[pos]))
-                throw std::runtime_error("Error in config file: invalid location client max body size");
+	if (_client_max_body_size != -1)
+		throw std::runtime_error("Error in config file: duplicate directive client_max_body_size");
+	if (client_max_body_size[client_max_body_size.size() - 1] == 'M' || client_max_body_size[client_max_body_size.size() - 1] == 'm')
+		has_suffix_m = true;
+	for (size_t pos = 0; pos < client_max_body_size.size(); pos++) {
+		if (has_suffix_m == false) {
+			if (!std::isdigit(client_max_body_size[pos]))
+				throw std::runtime_error("Error in config file: invalid client max body size");
+		} else {
+			if (pos != client_max_body_size.size() - 1 && !std::isdigit(client_max_body_size[pos]))
+				throw std::runtime_error("Error in config file: invalid client max body size");
+		}
+	}
+
+	char *end;
+	errno = 0;
+	long result = std::strtol(client_max_body_size.c_str(), &end, 10);
+	if (errno == ERANGE) {
+        if (result == LONG_MAX) {
+            throw std::runtime_error("Error: client max body size too large");
+        } else if (result == LONG_MIN) {
+            throw std::runtime_error("Error: client max body size too small");
         }
     }
-    if (mb == true) _client_max_body_size = std::strtoul(client_max_body_size.c_str(), NULL, 0) * 1000000;
-    else _client_max_body_size = std::strtoul(client_max_body_size.c_str(), NULL, 0);
+    if (*end != '\0' && *end != 'M' && *end != 'm')
+        throw std::runtime_error("Error: invalid character in client max body size");
+	if (has_suffix_m == true) 
+		result *= 1000000;
+	_client_max_body_size = result;	
+}
+
+void    Location::set_timeout(std::string timeout) {
+	bool has_suffix_s = false;
+
+    if (_timeout != -1)
+        throw std::runtime_error("Error in config file: duplicate directive keepalive_timeout");
+    if (timeout[timeout.size() - 1] == 's')
+        has_suffix_s = true;
+	for (size_t pos = 0; pos < timeout.size(); pos++) {
+		if (has_suffix_s == false) {
+			if (!std::isdigit(timeout[pos]))
+				throw std::runtime_error("Error in config file: invalid keepalive_timeout");
+		} else {
+			if (pos != timeout.size() - 1 && !std::isdigit(timeout[pos]))
+				throw std::runtime_error("Error in config file: invalid keepalive_timeout");
+		}
+	}
+
+    char* end;
+    errno = 0;
+    long result = std::strtol(timeout.c_str(), &end, 10);
+    if (errno == ERANGE) {
+        if (result == LONG_MAX) {
+            throw std::runtime_error("Error: timeout value too large");
+        } else if (result == LONG_MIN) {
+            throw std::runtime_error("Error: timeout value too small");
+        }
+    }
+    if (*end != '\0' && *end != 's')
+        throw std::runtime_error("Error: invalid character in keepalive_timeout");
+    if (result < 0 || result > INT_MAX)
+        throw std::runtime_error("Error: timeout value out of range");
+    _timeout = static_cast<int>(result);
 }
 
 void    Location::set_methods(std::string methods) {
@@ -192,6 +241,9 @@ std::string&    Location::get_alias() {return _alias;}
 
 long    Location::get_client_max_body_size() {return _client_max_body_size;}
 
+int	Location::get_timeout() {return _timeout;}
+
+
 std::string&    Location::get_autoindex() {return _autoindex;}
 
 std::vector<std::string>&   Location::get_index() {return _index;}
@@ -215,28 +267,29 @@ std::string&    Location::get_cgi_ext() {return _cgi_ext;}
 
 void    Location::print_all_directives() const {
 
-    std::cout << "      path: " << _path << std::endl;
-    std::cout << "      root: " << _root << std::endl;
-    std::cout << "      alias: " << _alias << std::endl;
-    std::cout << "      client_max_body_size: " << _client_max_body_size << std::endl;
-    std::cout << "      autoindex " << _autoindex << std::endl;
-    std::cout << "      index [ size = " << _index.size() << " ]: ";
+    std::cout << GRN << "      path: " << RST << _path << std::endl;
+    std::cout << GRN << "      root: " << RST << _root << std::endl;
+    std::cout << GRN << "      alias: " << RST << _alias << std::endl;
+    std::cout << GRN << "      client_max_body_size: " << RST << _client_max_body_size << std::endl;
+    std::cout << GRN << "      timeout " << RST << _timeout << std::endl;
+    std::cout << GRN << "      autoindex " << RST << _autoindex << std::endl;
+    std::cout << GRN << "      index [ size = " << _index.size() << " ]: ";
     for (size_t i = 0; i < _index.size(); i++) {
-        std::cout << _index[i] << " ";
+        std::cout << RST << _index[i] << " ";
     }
     std::cout << std::endl;
-    std::cout << "      methods [ size = " << _methods.size() << " ]: ";
+    std::cout << GRN << "      methods [ size = " << _methods.size() << " ]: ";
     for (size_t i = 0; i < _methods.size(); i++) {
-        std::cout << _methods[i] << " ";
+        std::cout << RST << _methods[i] << " ";
     }
     std::cout << std::endl;
     std::map<int, std::string>::const_iterator it;
     for (it = _error_pages.begin(); it != _error_pages.end(); it++) {
-        std::cout << "      error_page [ " << it->first << " ]: " << it->second << std::endl;
+        std::cout << GRN << "      error_page [ " << it->first << " ]: " << RST << it->second << std::endl;
     }
-    std::cout << "      upload_path: " << _upload_path << std::endl;
-    std::cout << "      cgi_path: " << _cgi_path << std::endl;
-    std::cout << "      cgi_ext: " << _cgi_ext << std::endl;
+    std::cout << GRN << "      upload_path: " << RST << _upload_path << std::endl;
+    std::cout << GRN << "      cgi_path: " << RST << _cgi_path << std::endl;
+    std::cout << GRN << "      cgi_ext: " << RST << _cgi_ext << std::endl;
     std::cout << std::endl;
 }
 std::string Location::search_index_file(std::string path) {
