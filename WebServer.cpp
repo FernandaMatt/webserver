@@ -347,29 +347,30 @@ void WebServer::handleConnections()
 							if (req.type == "CGI")
 							{
 								Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
-								HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd);
+								HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateRequest(_conections[events[i].data.fd], req.host));
 
-								int fdPipe = cgiHandler->executeTest();
+							int fdPipe = cgiHandler->executeCGI();
 
-								_requestsCGI[fdPipe] = cgiHandler;
-							}
-							if (req.type == "STATIC")
+                            if (fdPipe == -1)
+                            {
+                                Logger::log(LOG_WARNING, "CGI script failed to execute. Error response sent. Closing connection: " + std::to_string(events[i].data.fd));
+                                done = 1;
+                            }
+                            else
+                                _requestsCGI[fdPipe] = cgiHandler;
+						    }
+                        }
+						if (req.type == "STATIC")
+						{
+							response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+							std::vector<char> responseString = response.getResponse();
+							size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
+							if (wbytes <= 0)
 							{
-								response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
-								std::vector<char> responseString = response.getResponse();
-								size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-								if (wbytes <= 0)
-								{
-									if (wbytes == -1)
-										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
-								}
-								if (_requests.find(fd) != _requests.end())
-								{
-									delete _requests[events[i].data.fd];
-									_requests.erase(events[i].data.fd);
-								}
-								done = 1; //answer sent, close connection
+								if (wbytes == -1)
+									Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
 							}
+							done = 1; //answer sent, close connection
 						}
 					}
 					//check if fd is in responseFd, if so, send response
@@ -380,7 +381,11 @@ void WebServer::handleConnections()
 						{
 							if (it->second->_responseCGI.size() > 0)
 							{
-								size_t wbytes = write(it->second->_responseFd, it->second->_responseCGI.c_str(), it->second->_responseCGI.size());
+                                Response response;
+                                response = it->second->getCGIResponse();
+                                char * test = strdup(response.getResponse().data());
+                                size_t testsize = response.getResponseSize();
+								size_t wbytes = write(it->second->_responseFd, response.getResponse().data(), response.getResponseSize());
 								if (wbytes <= 0)
 								{
 									if(wbytes == -1)

@@ -15,6 +15,7 @@
 # include "../Logger.hpp"
 # include "error_pages.hpp"
 # include "./utils/MimeTypes.hpp"
+# include "../Server.hpp"
 
 struct FileInfo {
     std::string name;
@@ -28,10 +29,12 @@ class Response {
         Response();
         ~Response();
 
-        void loadFromFile(const std::string& filePath);
+        void loadFromFile(const std::string& filePath, bool logError = true);
         void loadAutoIndex(std::string &path);
+        void loadErrorPage(int statusCode, Server server, bool logError = true);
         void loadDefaultErrorPage(int statusCode);
         const std::vector<char> getResponse() const;
+        int getResponseSize() const;
 
         void setStatusMessage(const char *statusMessage); //see if i can receive the macro as string
         void setHttpHeaders(const char *httpHeaders);
