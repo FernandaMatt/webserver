@@ -193,7 +193,7 @@ void WebServer::acceptConnection(int *serverFd)
 		Logger::log(LOG_WARNING, "accept() failure");
 		return ;
 	}
-	
+
 	//CHECAR COM A FERNANDA!!!!!
 	// check if total connections is greater than SOMAXCONN
 	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 8;
@@ -301,12 +301,12 @@ void WebServer::handleConnections()
 							ssize_t bread = read(fd, buf, BUF_SIZE);
 							if (bread <= 0)
 							{
-								if (bread == -1)
+								if (bread == 0)
 								{
-									Logger::log(LOG_INFO, "Clossing connection: " + std::to_string(fd));
-									// if bread == -1, that means an error occurred, so done is set to close the connection and remove from epoll
-									done = 1;
+									Logger::log(LOG_INFO, "Nothing to read, clossing connection: " + std::to_string(fd));
 								}
+								// if bread <=0 , that means an error occurred, so done is set to close the connection and remove from epoll
+								done = 1;
 								break ; //with error only break the loop for now
 							}
 							request.append(buf, bread);
@@ -323,23 +323,21 @@ void WebServer::handleConnections()
 					if (request.size() > 0)
 					{
 						httpRequest req = RequestParser::parseRequest(request);
-						//check if request is incomplete
+						//check if request is incomplete or empty
 						if (req.request_status == "incomplete" || req.request_status == "")
 						{
-							//if req is incomplete, check if requests is already in _requests, if so, append it
+							//if req is incomplete, check if requests is already in _requests map, if so, append it
 							if (_requests.find(fd) != _requests.end())
 							{
 								_requests[fd]->append(request);
 								httpRequest tmp = RequestParser::parseRequest(*_requests[fd]);
 								req = tmp;
-
 							}
-							//else add to _requests map
+							//else add request to _requests map
 							else
 							{
 								std::string *addReq = new std::string(request);
 								_requests[fd] = addReq;
-
 							}
 						}
 						//check if request is complete and if so, check if it is CGI or STATIC
@@ -365,12 +363,15 @@ void WebServer::handleConnections()
 									if (wbytes == -1)
 										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
 								}
+								if (_requests.find(fd) != _requests.end())
+								{
+									delete _requests[events[i].data.fd];
+									_requests.erase(events[i].data.fd);
+								}
 								done = 1; //answer sent, close connection
 							}
 						}
 					}
-					// else
-					// 	done = 1; //no request, close connection
 					//check if fd is in responseFd, if so, send response
 					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
 					for(it; it != _requestsCGI.end(); ++it)
@@ -399,12 +400,6 @@ void WebServer::handleConnections()
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
                     _conections.erase(events[i].data.fd);
 					close(events[i].data.fd);
-					if (_requests.find(events[i].data.fd) != _requests.end())
-					{
-						delete _requests[events[i].data.fd];
-						_requests.erase(events[i].data.fd);
-					}
-
 				}
 			}
 		}
