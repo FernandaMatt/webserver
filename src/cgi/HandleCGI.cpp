@@ -107,6 +107,8 @@ std::string HandleCGI::getCGIPath() {
     if (cgi_path.empty() || !isDirectory(cgi_path))
         return "";
 
+    if (cgi_path.back() != '/')
+        cgi_path += '/';
     std::string cgi_full_path = cgi_path + _request.CGIfilename;
     if (!isFile(cgi_full_path))
         return "";

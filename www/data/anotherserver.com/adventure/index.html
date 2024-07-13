@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+    <title>Another Server</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Prevent scroll bars */
+        }
+        body {
+            background-color: rgb(11, 45, 11);
+            color: rgb(251, 214, 173);
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        header {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 20px;
+            box-sizing: border-box; /* Include padding in the width calculation */
+        }
+        nav a {
+            color: rgb(251, 214, 173);
+            text-decoration: none;
+            margin-left: 20px;
+            margin-right: 5px;
+            font-size: 1.1em;
+        }
+        h1 {
+            font-size: 3em;
+			margin-bottom: 45px;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+		input{
+			margin-bottom: 20px;
+		}
+        .round-button {
+            background-color: rgb(251, 214, 173);
+            color: rgb(11, 45, 11);
+            border: none;
+            border-radius: 12px;
+            width: 100px;
+            height: 40px;
+            font-size: 1em;
+            font-weight: bolder;
+            cursor: pointer;
+            outline: none;
+        }
+        .round-button:hover {
+            background-color: rgb(238, 177, 108);
+        }
+		.n-input {
+			width: 300px;
+			height: 30px;
+			font-size: 1em;
+			text-align: center;
+            border-radius: 12px;
+			margin-left: 10px;
+			margin-right: 10px;
+		}
+        label, input {
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home Base</a>
+            <a href="/adventure">Wait!</a>
+            <a href="/mystery">Mystery Spot</a>
+			<a href="/wrongPath">Not Found</a>
+            <a href="/error_pages">Forbidden</a>
+        </nav>
+    </header>
+    
+    <h1>Wait Page</h1>
+    <label for="seconds">Choose number of seconds to wait:</label>
+    <input type="number" id="seconds" name="seconds" min="1" class="n-input">
+    <button onclick="startWait()" class="round-button">Start Wait</button>
+    <div id="message"></div>
+
+	<script>
+        function startWait() {
+            const seconds = document.getElementById('seconds').value;
+            if (seconds) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.textContent = `Waiting for ${seconds} seconds...`;
+
+                fetch(`/timer-cgi/timer.php?seconds=${seconds}`)
+                    .then(response => response.text())
+                    .then(data => {
+                        messageDiv.textContent = `${data}`;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        messageDiv.textContent = 'An error occurred. Please try again.';
+                    });
+            } else {
+                alert('Please enter a number of seconds.');
+            }
+        }
+    </script>
+</body>
+</html>
