@@ -14,7 +14,8 @@ HandleCGI::~HandleCGI() {};
 
 int HandleCGI::executeCGI() {
 
-    std::string cgi_full_path = getCGIPath();
+    std::string cgi_full_path = getFullCGIPath();
+
     if (cgi_full_path.empty()) {
         sendErrorResponse(404, _responseFd);
         return -1;
@@ -75,6 +76,17 @@ int HandleCGI::executeCGI() {
 
 		close(_pipefd[1]);
 
+        //change directory to cgi path
+        std::string cgi_path = getCGIPath();
+        if (chdir(cgi_path.c_str()) == -1) {
+            perror("chdir");
+            freeEnv(envp);
+            free(path);
+            free(script_file);
+            sendErrorResponse(500, STDOUT_FILENO);
+            exit(EXIT_FAILURE);
+        }
+
 		if (execve(path, argv, envp) == -1) {
 			perror("execve");
             freeEnv(envp);
@@ -107,6 +119,11 @@ std::string HandleCGI::getCGIPath() {
     if (cgi_path.empty() || !isDirectory(cgi_path))
         return "";
 
+    return cgi_path;
+}
+
+std::string HandleCGI::getFullCGIPath() {
+    std::string cgi_path = getCGIPath();
     if (cgi_path.back() != '/')
         cgi_path += '/';
     std::string cgi_full_path = cgi_path + _request.CGIfilename;

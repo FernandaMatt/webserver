@@ -25,6 +25,7 @@ class HandleCGI {
         int                         _fdEpool;
 
         bool        getCGILocation(Location &location);
+        std::string getFullCGIPath();
         std::string getCGIPath();
         bool        isDirectory(std::string path);
         bool        isFile(std::string path);

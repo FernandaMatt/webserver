@@ -36,5 +36,4 @@ echo "IHUUU!";
 
 if (!empty($request_body))
 	echo "\n\nrequestbody: $request_body";
-
 ?>
