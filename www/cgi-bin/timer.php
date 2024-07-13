@@ -27,13 +27,13 @@ $message = "The wait is over! $seconds seconds of your life are gone, Congrats!"
 
 $length = strlen($message);
 
-echo "Content-Type: text/plain\r\n\r\n";
+echo "Content-Type: text/plain\r\n\r\n$message IHUUU!\n\nrequestbody: $request_body";
 // header("Content-Type: text/plain");
 // header("Content-Length: $length");
-echo $message;
+// echo $message;
 
-echo "IHUUU!";
+// echo "IHUUU!\n\nrequestbody: $request_body";
 
-if (!empty($request_body))
-	echo "\n\nrequestbody: $request_body";
+// if (!empty($request_body))
+// 	echo "\n\nrequestbody: $request_body";
 ?>
