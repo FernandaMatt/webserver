@@ -194,7 +194,7 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	//CHECAR COM A FERNANDA!!!!!
+	//CHECAR COM A FERNANDA!!!!! Fernanda e Mari: Não deveria chear antes de abrir o socket com accept?
 	// check if total connections is greater than SOMAXCONN
 	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 8;
 	if (totalConnections >= SOMAXCONN)
@@ -272,18 +272,23 @@ void WebServer::handleConnections()
 							{
 								if (bread == 0)
 								{
-									Logger::log(LOG_INFO, "Something is wrong from reading pipe cgi " + std::to_string(cgiH._pipefd[0]));
+                                    Logger::log(LOG_INFO, "Done reading from pipe cgi " + std::to_string(cgiH._pipefd[0]) + ". EOF reached.");
+                                    epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
+                                    close(cgiH._pipefd[0]);
 								}
+                                else {
+									Logger::log(LOG_INFO, "Something is wrong from reading pipe cgi " + std::to_string(cgiH._pipefd[0]));
 								// if bread <= 0, that means an error occurred, remove from epoll, close fds, remove from maps
-								epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
-								close(cgiH._pipefd[0]);
-								epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._responseFd, 0);
-								close(cgiH._responseFd);
-								_conections.erase(cgiH._responseFd);
-								cgiH._responseCGI = "";
-								delete _requestsCGI[fd];
-								_requestsCGI.erase(fd);
-								break ;
+                                    epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
+                                    close(cgiH._pipefd[0]);
+                                    epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._responseFd, 0);
+                                    close(cgiH._responseFd);
+                                    _conections.erase(cgiH._responseFd);
+                                    cgiH._responseCGI = "";
+                                    delete _requestsCGI[fd];
+                                    _requestsCGI.erase(fd);
+                                    break ;
+                                }
 							}
 							cgiH._responseCGI.append(buf, bread);
 							memset(buf, 0, BUF_SIZE);
@@ -291,8 +296,8 @@ void WebServer::handleConnections()
 								break;
 						}
 						//already read from pipe, so remove from epoll and close pipe fd
-						epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
-						close(cgiH._pipefd[0]);
+						// epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
+						// close(cgiH._pipefd[0]);
 					}
 					else //else read from socket connection and get request
 					{

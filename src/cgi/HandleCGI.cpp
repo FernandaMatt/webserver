@@ -56,8 +56,6 @@ int HandleCGI::executeCGI() {
         else {
             Logger::log(LOG_ERROR, "Failed to create pipe for body");
             sendErrorResponse(500, STDOUT_FILENO);
-            close(_pipefd[0]);
-            close(_pipefd[1]);
             exit(EXIT_FAILURE);
         }
 
