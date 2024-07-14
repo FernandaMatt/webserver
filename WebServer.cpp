@@ -196,7 +196,7 @@ void WebServer::acceptConnection(int *serverFd)
 
 	//CHECAR COM A FERNANDA!!!!! Fernanda e Mari: Não deveria chear antes de abrir o socket com accept?
 	// check if total connections is greater than SOMAXCONN
-	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 8;
+	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 1000;
 	if (totalConnections >= SOMAXCONN)
 	{
 		if (newSockFD != -1)
@@ -221,7 +221,7 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT);
+	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT | EPOLLRDHUP);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
@@ -230,8 +230,6 @@ void WebServer::acceptConnection(int *serverFd)
 void WebServer::handleConnections()
 {
 	struct epoll_event events[MAX_EVENTS];
-
-    ResponseBuilder response;
 
 	while (true)
 	{
@@ -257,6 +255,20 @@ void WebServer::handleConnections()
 				char buf[BUF_SIZE];
 				memset(buf, 0, BUF_SIZE);
 				std::string request;
+				if (events[i].events & EPOLLRDHUP)
+				{
+					Logger::log(LOG_INFO, "Closing connection from client: " + std::to_string(events[i].data.fd));
+                    if (_requests.find(fd) != _requests.end())
+                    {
+                        delete _requests[fd];
+                        _requests.erase(fd);
+                    }
+					Logger::log(LOG_INFO, "Closing connection: " + std::to_string(events[i].data.fd));
+					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
+                    _conections.erase(events[i].data.fd);
+					close(events[i].data.fd);
+					continue;
+				}
 				// checking for EPOLLIN event, ready to read from fd
 				if (events[i].events & EPOLLIN)
 				{
@@ -318,6 +330,12 @@ void WebServer::handleConnections()
 							if (bread < BUF_SIZE)
 								break;
 						}
+						httpRequest req = RequestParser::parseRequest(request);
+						if (req.type == "CGI")
+						{
+							Logger::log(LOG_WARNING, "CGI Request RECEIVED. Testing...");
+
+						}
 					}
 				}
 				if (events[i].events & EPOLLOUT)
@@ -366,6 +384,7 @@ void WebServer::handleConnections()
 						    }
                             if (req.type == "STATIC")
                             {
+								ResponseBuilder response;
                                 response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
                                 std::vector<char> responseString = response.getResponse();
                                 size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
@@ -386,9 +405,9 @@ void WebServer::handleConnections()
 						{
 							if (it->second->_responseCGI.size() > 0 && it->second->responseReady == 1)
 							{
-                                Response response;
-                                response = it->second->getCGIResponse();
-								size_t wbytes = write(it->second->_responseFd, response.getResponse().data(), response.getResponseSize());
+                                Response responseCGI;
+                                responseCGI = it->second->getCGIResponse();
+								size_t wbytes = write(it->second->_responseFd, responseCGI.getResponse().data(), responseCGI.getResponseSize());
 								if (wbytes <= 0)
 								{
 									if(wbytes == -1)
