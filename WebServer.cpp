@@ -364,19 +364,19 @@ void WebServer::handleConnections()
                                     continue;
                                 }
 						    }
+                            if (req.type == "STATIC")
+                            {
+                                response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+                                std::vector<char> responseString = response.getResponse();
+                                size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
+                                if (wbytes <= 0)
+                                {
+                                    if (wbytes == -1)
+                                        Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
+                                }
+                                done = 1; //answer sent, close connection
+                            }
                         }
-						if (req.type == "STATIC")
-						{
-							response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
-							std::vector<char> responseString = response.getResponse();
-							size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-							if (wbytes <= 0)
-							{
-								if (wbytes == -1)
-									Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
-							}
-							done = 1; //answer sent, close connection
-						}
 					}
 					//check if fd is in responseFd, if so, send response
 					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
@@ -415,6 +415,11 @@ void WebServer::handleConnections()
                 }
 				if (done)
 				{
+                    if (_requests.find(fd) != _requests.end())
+                    {
+                        delete _requests[fd];
+                        _requests.erase(fd);
+                    }
 					Logger::log(LOG_INFO, "Closing connection: " + std::to_string(events[i].data.fd));
 					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
                     _conections.erase(events[i].data.fd);
