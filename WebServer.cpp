@@ -330,29 +330,12 @@ void WebServer::handleConnections()
 							if (bread < BUF_SIZE)
 								break;
 						}
-						httpRequest req = RequestParser::parseRequest(request);
-						if (req.type == "CGI")
+						if (request.size() > 0)
 						{
-							Logger::log(LOG_WARNING, "CGI Request RECEIVED. Testing...");
-
-						}
-					}
-				}
-				if (events[i].events & EPOLLOUT)
-				{
-					//check if request is not empty
-					if (request.size() > 0)
-					{
-						httpRequest req = RequestParser::parseRequest(request);
-						//check if request is incomplete or empty
-						if (req.request_status == "incomplete" || req.request_status == "")
-						{
-							//if req is incomplete, check if requests is already in _requests map, if so, append it
+							//check if requests is already in _requests map, if so, append it
 							if (_requests.find(fd) != _requests.end())
 							{
 								_requests[fd]->append(request);
-								httpRequest tmp = RequestParser::parseRequest(*_requests[fd]);
-								req = tmp;
 							}
 							//else add request to _requests map
 							else
@@ -361,6 +344,37 @@ void WebServer::handleConnections()
 								_requests[fd] = addReq;
 							}
 						}
+					}
+				}
+				if (events[i].events & EPOLLOUT)
+				{
+					//check if fd is in responseFd, if so, send response
+					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
+					for(it; it != _requestsCGI.end(); ++it)
+					{
+						if (it->second->_responseFd == events[i].data.fd)
+						{
+							if (it->second->_responseCGI.size() > 0 && it->second->responseReady == 1)
+							{
+                                Response responseCGI;
+                                responseCGI = it->second->getCGIResponse();
+								size_t wbytes = write(it->second->_responseFd, responseCGI.getResponse().data(), responseCGI.getResponseSize());
+								if (wbytes <= 0)
+								{
+									if(wbytes == -1)
+										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(it->second->_responseFd));
+								}
+								delete _requestsCGI[it->first];
+								_requestsCGI.erase(it->first);
+								done = 1;
+							}
+							break;
+						}
+					}
+					//check if fd is in requests, if so, parse request
+					if (_requests.find(fd) != _requests.end())
+					{
+						httpRequest req = RequestParser::parseRequest(*_requests[fd]);
 						//check if request is complete and if so, check if it is CGI or STATIC
 						if (req.request_status == "complete")
 						{
@@ -397,29 +411,11 @@ void WebServer::handleConnections()
                             }
                         }
 					}
-					//check if fd is in responseFd, if so, send response
-					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
-					for(it; it != _requestsCGI.end(); ++it)
-					{
-						if (it->second->_responseFd == events[i].data.fd)
-						{
-							if (it->second->_responseCGI.size() > 0 && it->second->responseReady == 1)
-							{
-                                Response responseCGI;
-                                responseCGI = it->second->getCGIResponse();
-								size_t wbytes = write(it->second->_responseFd, responseCGI.getResponse().data(), responseCGI.getResponseSize());
-								if (wbytes <= 0)
-								{
-									if(wbytes == -1)
-										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(it->second->_responseFd));
-								}
-								delete _requestsCGI[it->first];
-								_requestsCGI.erase(it->first);
-								done = 1;
-							}
-							break;
-						}
-					}
+					// if (events[i].events == EPOLLOUT && _requests.find(fd) != _requests.end())
+					// {
+					// 	Logger::log(LOG_WARNING, "Request not found in _requests map, clossing connection: " + std::to_string(events[i].data.fd));
+					// 	done = 1;
+					// }
 				}
                 if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
                 {
