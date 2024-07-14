@@ -129,7 +129,7 @@ bool ResponseBuilder::checkAutoIndex(std::string &path) {
     if (_location.get_path() != "" && _location.get_autoindex() != "on"
         || _location.get_path() == "" && _server.get_autoindex() != "on")
         return false;
-    _response.loadAutoIndex(path);
+    _response.loadAutoIndex(path, _parsedRequest.path);
     return true;
 }
 
