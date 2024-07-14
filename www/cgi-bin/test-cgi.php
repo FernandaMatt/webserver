@@ -1,12 +1,11 @@
-#!/usr/bin/env php
+#!/usr/bin/env php-cgi
 <?php
 
-$message = "Hello, World!";
+$message = "Hello, World! Atenção: Aqui é Brasil!";
 
 $length = strlen($message);
 
-echo "Content-Type: text/plain\r\n";
-echo "Content-Length: $length\r\n\r\n";
+header("Content-Type: text/plain");
 echo $message;
 
 ?>
