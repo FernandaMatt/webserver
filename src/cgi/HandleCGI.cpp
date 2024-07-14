@@ -45,14 +45,11 @@ int HandleCGI::executeCGI() {
         if (pipe(pipeBody) != -1) {
             dup2(pipeBody[0], STDIN_FILENO);
             close(pipeBody[0]);
-            Logger::log(LOG_INFO, "Request body: " + _request.body);
-            if (_request.body.size() > 0) {
-                if (write(pipeBody[1], _request.body.c_str(), _request.body.size()) <= 0)
-                    Logger::log(LOG_ERROR, "write() failed");
-                else
-                    Logger::log(LOG_INFO, "Request body sent to CGI");
-            }
+            dup2(_pipefd[1], STDOUT_FILENO);
             close(pipeBody[1]);
+            Logger::log(LOG_INFO, "Request body: " + _request.body);
+            if (_request.body.size() > 0)
+                std::cout << _request.body;
         }
         else {
             Logger::log(LOG_ERROR, "Failed to create pipe for body");
