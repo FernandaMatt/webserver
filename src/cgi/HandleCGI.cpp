@@ -8,6 +8,7 @@ HandleCGI::HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Se
     this->_responseFd = responseFd;
 	this->_responseCGI = "";
     this->_server = server;
+    this->responseReady = false;
 };
 
 HandleCGI::~HandleCGI() {};

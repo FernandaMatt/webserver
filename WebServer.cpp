@@ -275,6 +275,7 @@ void WebServer::handleConnections()
                                     Logger::log(LOG_INFO, "Done reading from pipe cgi " + std::to_string(cgiH._pipefd[0]) + ". EOF reached.");
                                     epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
                                     close(cgiH._pipefd[0]);
+                                    cgiH.responseReady = 1;
 								}
                                 else {
 									Logger::log(LOG_INFO, "Something is wrong from reading pipe cgi " + std::to_string(cgiH._pipefd[0]));
@@ -295,9 +296,6 @@ void WebServer::handleConnections()
 							if (bread < BUF_SIZE)
 								break;
 						}
-						//already read from pipe, so remove from epoll and close pipe fd
-						// epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
-						// close(cgiH._pipefd[0]);
 					}
 					else //else read from socket connection and get request
 					{
@@ -354,15 +352,17 @@ void WebServer::handleConnections()
 								Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
 								HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateRequest(_conections[events[i].data.fd], req.host));
 
-							int fdPipe = cgiHandler->executeCGI();
+                                int fdPipe = cgiHandler->executeCGI();
 
-                            if (fdPipe == -1)
-                            {
-                                Logger::log(LOG_WARNING, "CGI script failed to execute. Error response sent. Closing connection: " + std::to_string(events[i].data.fd));
-                                done = 1;
-                            }
-                            else
-                                _requestsCGI[fdPipe] = cgiHandler;
+                                if (fdPipe == -1)
+                                {
+                                    Logger::log(LOG_WARNING, "CGI script failed to execute. Error response sent. Closing connection: " + std::to_string(events[i].data.fd));
+                                    done = 1;
+                                }
+                                else {
+                                    _requestsCGI[fdPipe] = cgiHandler;
+                                    continue;
+                                }
 						    }
                         }
 						if (req.type == "STATIC")
@@ -384,7 +384,7 @@ void WebServer::handleConnections()
 					{
 						if (it->second->_responseFd == events[i].data.fd)
 						{
-							if (it->second->_responseCGI.size() > 0)
+							if (it->second->_responseCGI.size() > 0 && it->second->responseReady == 1)
 							{
                                 Response response;
                                 response = it->second->getCGIResponse();
@@ -404,6 +404,17 @@ void WebServer::handleConnections()
 						}
 					}
 				}
+                if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
+                {
+                    HandleCGI &cgiH = *_requestsCGI[fd];
+                    ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
+                    if (bread == 0){
+                        Logger::log(LOG_INFO, "Closing pipe fd: " + std::to_string(cgiH._pipefd[0]));
+                        epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
+                        close(cgiH._pipefd[0]);
+                        cgiH.responseReady = 1;
+                    }
+                }
 				if (done)
 				{
 					Logger::log(LOG_INFO, "Closing connection: " + std::to_string(events[i].data.fd));
