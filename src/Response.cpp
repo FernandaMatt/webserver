@@ -94,10 +94,14 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
     return filesInfo;
 }
 
-void Response::loadAutoIndex(std::string &path) {
+void Response::loadAutoIndex(std::string &path, std::string &request_path) {
     std::vector<FileInfo> filesInfo = getFilesInDirectory(path);
-    std::string currentDir = "/" + filesInfo[0].name + "/";
-
+    std::string currentDir;
+    if (request_path.find("/") == 0)
+        currentDir = request_path + "/";
+    else
+        currentDir = "/" + request_path + "/";
+    
     std::string autoIndex = "<html><head><title>Index</title>";
     autoIndex += "<style>table { border-collapse: collapse; } th, td { padding: 10px; }</style>";
     autoIndex += "</head><body><h1>Index of " + currentDir + "</h1>";
