@@ -388,8 +388,6 @@ void WebServer::handleConnections()
 							{
                                 Response response;
                                 response = it->second->getCGIResponse();
-                                char * test = strdup(response.getResponse().data()); //apagar
-                                size_t testsize = response.getResponseSize(); //apagar
 								size_t wbytes = write(it->second->_responseFd, response.getResponse().data(), response.getResponseSize());
 								if (wbytes <= 0)
 								{

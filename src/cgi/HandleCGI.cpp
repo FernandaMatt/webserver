@@ -155,6 +155,7 @@ char ** HandleCGI::buildEnv() {
     _env.push_back("QUERY_STRING=" + _request.queryString);
     //REMOTE_ADDR ??
     _env.push_back("REQUEST_METHOD=" + getMethod(_request.method));
+    _env.push_back("SCRIPT_FILENAME=" + getFullCGIPath());
     _env.push_back("SCRIPT_NAME=" + _request.path);
     _env.push_back("SERVER_NAME=" + _request.host);
     _env.push_back("SERVER_PORT=" + _request.port);
@@ -229,7 +230,9 @@ Response HandleCGI::getCGIResponse() {
 }
 
 bool HandleCGI::checkResponse() {
-    size_t pos = _responseCGI.find("Content-Type:");
+    std::string status_line = _responseCGI.substr(0, _responseCGI.find("\r\n"));
+    std::transform(status_line.begin(), status_line.end(), status_line.begin(), ::toupper);
+    size_t pos = status_line.find("CONTENT-TYPE:");
     size_t header_end = _responseCGI.find("\r\n\r\n");
     if (header_end == std::string::npos)
         header_end = _responseCGI.find("\n\n");
