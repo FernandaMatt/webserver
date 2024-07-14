@@ -164,11 +164,6 @@ char ** HandleCGI::buildEnv() {
     for (std::map<std::string, std::string>::iterator it = _request.headers.begin(); it != _request.headers.end(); it++)
         _env.push_back("HTTP_" + it->first + "=" + it->second);
 
-
-    //print _env
-    for (std::vector<std::string>::iterator it = _env.begin(); it != _env.end(); ++it)
-        std::cout << *it << std::endl;
-    
     char **env_char = convertEnv();
     return env_char;
 }
