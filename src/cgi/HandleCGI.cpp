@@ -8,6 +8,7 @@ HandleCGI::HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Se
     this->_responseFd = responseFd;
 	this->_responseCGI = "";
     this->_server = server;
+    this->responseReady = false;
 };
 
 HandleCGI::~HandleCGI() {};
@@ -56,8 +57,6 @@ int HandleCGI::executeCGI() {
         else {
             Logger::log(LOG_ERROR, "Failed to create pipe for body");
             sendErrorResponse(500, STDOUT_FILENO);
-            close(_pipefd[0]);
-            close(_pipefd[1]);
             exit(EXIT_FAILURE);
         }
 

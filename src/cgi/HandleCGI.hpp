@@ -48,6 +48,7 @@ class HandleCGI {
 
         int         _pipefd[2];
         int         _responseFd;
+        bool        responseReady;
         Server      _server;
 		std::string	_responseCGI;
 
