@@ -64,18 +64,41 @@
 <body>
     <header>
         <nav>
-            <a href="/">Home</a>
-			<a href="/about">About</a>
-            <a href="/juninho">Juninho</a>
-            <a href="/post">Post</a>
-			<a href="/wrongPath">Not Found</a>
-            <a href="/images">Forbidden</a>
+            <a href="#">Home</a>
+            <a href="http://webserv42.com/juninho">Juninho</a>
+            <a href="#">Upload</a>
         </nav>
     </header>
     <h1>Upload File</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="file" required>
         <input type="submit" value="Upload">
     </form>
+
+    <div id="message"></div>
+
+    <script>
+        // Função para lidar com o envio do formulário via Fetch API
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evita o comportamento padrão de envio do formulário
+
+            var formData = new FormData(document.getElementById('uploadForm'));
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.status === 201) {
+                    document.getElementById('message').innerHTML = '<p>Upload realizado com sucesso!</p>';
+                } else {
+                    document.getElementById('message').innerHTML = '<p>Erro ao realizar o upload.</p>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').innerHTML = '<p>Erro ao realizar o upload.</p>';
+            });
+        });
+    </script>
 </body>
 </html>

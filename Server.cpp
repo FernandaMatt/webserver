@@ -112,7 +112,7 @@ void    Server::set_client_max_body_size(std::string client_max_body_size) {
     if (*end != '\0' && *end != 'M' && *end != 'm')
         throw std::runtime_error("Error: invalid character in client max body size");
 	if (has_suffix_m == true) 
-		result *= 1000000;
+		result *= 1048576;
 	_client_max_body_size = result;	
 }
 
