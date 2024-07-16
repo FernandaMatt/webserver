@@ -167,6 +167,18 @@ void WebServer::addToEpoll(const int &fd, uint32_t events) {
 	}
 }
 
+void WebServer::modifyEpoll(const int &fd, uint32_t events) {
+	struct epoll_event event;
+	event.data.fd = fd;
+	event.events = events;
+	if (epoll_ctl(this->_epollFD, EPOLL_CTL_MOD, fd, &event) == -1)
+	{
+		Logger::log(LOG_ERROR, "Failed to modify server socket to epoll, closing connection fd: " + std::to_string(fd));
+		close(fd);
+		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, fd, 0);
+	}
+}
+
 void WebServer::addToEpollServers(){
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
@@ -433,6 +445,14 @@ void WebServer::handleConnections()
 									if (wbytes <= 0)
 									{
 										Logger::log(LOG_ERROR, "write() failure, response not sent.");
+									}
+									else if (wbytes < responseString.size())
+									{
+										Logger::log(LOG_ERROR, "write() failure, response not sent completely.");
+									}
+									else
+									{
+										Logger::log(LOG_INFO, "Response sent successfully.");
 									}
 									closeConnection(fd, "Closing connection: " + std::to_string(fd));
 								}

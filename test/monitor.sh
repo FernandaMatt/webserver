@@ -2,7 +2,7 @@
 
 URL="http://www.default.com:8042/"
 DURATION="5S"
-CONCURRENT_USERS=2
+CONCURRENT_USERS=10
 MEMORY_THRESHOLD_PERCENT=5  # Adjust as needed (represents 5% of total memory)
 CHECK_INTERVAL=10  # in seconds
 PROCESS_NAME="./webserv"  # Replace with the actual server process name

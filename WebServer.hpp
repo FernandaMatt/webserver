@@ -32,6 +32,7 @@ class WebServer {
 		void	settingListeners();
 		void	addToEpollServers( );
 		void	addToEpoll(const int &fd, uint32_t events);
+		void	modifyEpoll(const int &fd, uint32_t events);
 		void	acceptConnection(int *serverFd);
 		void	handleConnections( );
 		void 	closeConnection(const int &fd, std::string message);
