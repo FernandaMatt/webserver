@@ -236,7 +236,7 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT | EPOLLRDHUP);
+	addToEpoll (newSockFD, EPOLLIN | EPOLLRDHUP | EPOLLOUT);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
@@ -315,7 +315,7 @@ void WebServer::handleConnections()
 				char buf[BUF_SIZE];
 				memset(buf, 0, BUF_SIZE);
 				std::string request;
-				if (events[i].events & EPOLLRDHUP)
+				if (events[i].events == EPOLLRDHUP)
 				{
 					closeConnection(fd, "Connection closed on the remote side (EPOLLRDHUP): " + std::to_string(fd));
 				}
@@ -464,7 +464,8 @@ void WebServer::handleConnections()
                 {
                     HandleCGI &cgiH = *_requestsCGI[fd];
                     ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
-                    if (bread == 0){
+                    if (bread == 0)
+					{
 						closeCGIPipe(cgiH._pipefd[0], "Closing pipe fd (EPOLLHUP): " + std::to_string(cgiH._pipefd[0]));
                         cgiH.responseReady = 1;
                     }

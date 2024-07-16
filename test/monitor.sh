@@ -1,6 +1,6 @@
 #!/bin/bash
 
-URL="http://www.default.com:8042/"
+URL="http://localhost:8042/"
 DURATION="5S"
 CONCURRENT_USERS=10
 MEMORY_THRESHOLD_PERCENT=5  # Adjust as needed (represents 5% of total memory)
