@@ -12,10 +12,10 @@
 # include <algorithm>
 # include <libgen.h>
 # include <string.h>
-# include "../Logger.hpp"
-# include "error_pages.hpp"
-# include "./utils/MimeTypes.hpp"
-# include "../Server.hpp"
+# include "../utils/Logger.hpp"
+# include "../utils/error_pages.hpp"
+# include "../utils/MimeTypes.hpp"
+# include "../config/Server.hpp"
 
 struct FileInfo {
     std::string name;

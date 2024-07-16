@@ -1,7 +1,7 @@
-#include "Parser.hpp"
-#include "src/RequestParser.hpp"
-#include "defines.hpp"
-#include "WebServer.hpp"
+#include "config/Parser.hpp"
+#include "http/RequestParser.hpp"
+#include "utils/defines.hpp"
+#include "core/WebServer.hpp"
 
 int main(int argc, char **argv) {
 	if (argc > 2 ){
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
 	std::string config_file;
 	if (argc == 1)
-		config_file = "server_local.conf";
+		config_file = "src/server_local.conf";
 	else
 		config_file = argv[1];
 

@@ -1,10 +1,10 @@
 #ifndef HANDLECGI_HPP
 # define HANDLECGI_HPP
 
-# include "../../defines.hpp"
-# include "../../Server.hpp"
-# include "../../Location.hpp"
-# include "../ResponseBuilder.hpp"
+# include "../utils/defines.hpp"
+# include "../config/Server.hpp"
+# include "../config/Location.hpp"
+# include "../http/ResponseBuilder.hpp"
 # include <vector>
 # include <string>
 # include <iostream>
