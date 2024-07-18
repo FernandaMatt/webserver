@@ -185,7 +185,7 @@ void WebServer::addToEpollServers(){
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
 	{
-		addToEpoll(it->first, EPOLLIN | EPOLLET);
+		addToEpoll(it->first, EPOLLIN);
 	}
 }
 
@@ -241,7 +241,7 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	addToEpoll (newSockFD, EPOLLIN | EPOLLRDHUP | EPOLLOUT);
+	addToEpoll (newSockFD, EPOLLIN | EPOLLRDHUP);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
@@ -381,6 +381,14 @@ void WebServer::handleConnections()
 									break;
 							}
 						}
+						if (_requests.find(fd) != _requests.end())
+						{
+							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
+							if (req.request_status == "complete")
+							{
+								modifyEpoll(fd, EPOLLOUT );
+							}
+						}
 					}
 				}
 				else if (events[i].events & EPOLLOUT)
@@ -436,7 +444,7 @@ void WebServer::handleConnections()
 									response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
 									std::vector<char> responseString = response.getResponse();
 									size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-									if (wbytes <= 0)
+									if (wbytes == 0)
 									{
 										Logger::log(LOG_ERROR, "write() failure, response not sent.");
 									}
@@ -448,7 +456,7 @@ void WebServer::handleConnections()
 									{
 										Logger::log(LOG_INFO, "Response sent successfully.");
 									}
-									closeConnection(fd, "Closing connection: " + std::to_string(fd));
+										closeConnection(fd, "Closing connection: " + std::to_string(fd));
 								}
 							}
 						}
