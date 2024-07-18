@@ -58,6 +58,8 @@ WebServer::~WebServer() {
 		close(it->first);
 	}
 	this->_fdToServers.clear();
+
+	close (this->_epollFD);
 }
 
 void WebServer::handleSignal(int param) {
@@ -226,7 +228,10 @@ void WebServer::acceptConnection(int *serverFd)
 
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
+	{
         _conections[newSockFD] = it->second;
+		_requests[newSockFD] = new std::string();
+	}
 	else
 	{
 		Logger::log(LOG_ERROR, "Server socket fd not found!");
@@ -312,10 +317,7 @@ void WebServer::handleConnections()
 				acceptConnection(&isServerFD);
 			else
 			{
-				char buf[BUF_SIZE];
-				memset(buf, 0, BUF_SIZE);
-				std::string request;
-				if (events[i].events == EPOLLRDHUP)
+				if (events[i].events & EPOLLRDHUP)
 				{
 					closeConnection(fd, "Connection closed on the remote side (EPOLLRDHUP): " + std::to_string(fd));
 				}
@@ -324,10 +326,13 @@ void WebServer::handleConnections()
 					//check if actual fd is in CGI map, if so, read from pipe
 					if (_requestsCGI.find(fd) != _requestsCGI.end())
 					{
+						char buf[BUF_SIZE];
+						memset(buf, 0, BUF_SIZE);
 						HandleCGI &cgiH = *_requestsCGI[fd];
 
 						while (true)
 						{
+
 							ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
 							if (bread == 0)
 							{
@@ -353,12 +358,14 @@ void WebServer::handleConnections()
 					}
 					else //else read from socket connection and get request
 					{
+						char buf[BUF_SIZE];
+						memset(buf, 0, BUF_SIZE);
 						while (true)
 						{
 							ssize_t bread = read(fd, buf, BUF_SIZE);
 							if (bread == 0)
 							{
-								closeConnection(fd, "Connection closed by client: " + std::to_string(fd));
+								closeConnection(fd, "Connection closed by client (FIN): " + std::to_string(fd));
 								break ;
 							}
 							else if (bread < 0)
@@ -368,30 +375,17 @@ void WebServer::handleConnections()
 							}
 							else
 							{
-								request.append(buf, bread);
+								_requests[fd]->append(buf, bread);
 								memset(buf, 0, BUF_SIZE);
 								if (bread < BUF_SIZE)
 									break;
-							}
-						}
-						if (request.size() > 0)
-						{
-							//check if requests is already in _requests map, if so, append it
-							if (_requests.find(fd) != _requests.end())
-							{
-								_requests[fd]->append(request);
-							}
-							//else add request to _requests map
-							else
-							{
-								std::string *addReq = new std::string(request);
-								_requests[fd] = addReq;
 							}
 						}
 					}
 				}
 				else if (events[i].events & EPOLLOUT)
 				{
+					//check if fd is in requestsCGI, if so, check if response is ready
 					int cgiKey = ifResGetCGIKey(fd);
 					if (cgiKey != -1)
 					{
@@ -402,7 +396,7 @@ void WebServer::handleConnections()
 							size_t wbytes = write(fd, responseCGI.getResponse().data(), responseCGI.getResponseSize());
 							if (wbytes <= 0)
 							{
-								Logger::log(LOG_ERROR, "write() failure, response not sent.");
+								Logger::log(LOG_ERROR, "write() failure, response from CGI not sent.");
 							}
 							closeCGIPipe(cgiKey,"Closing pipe fd: " + std::to_string(cgiKey));
 							clearCGIRequests(cgiKey);
@@ -462,13 +456,12 @@ void WebServer::handleConnections()
 				}
                 else if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
                 {
+					char buf[BUF_SIZE];
+					memset(buf, 0, BUF_SIZE);
                     HandleCGI &cgiH = *_requestsCGI[fd];
                     ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
                     if (bread == 0)
-					{
-						closeCGIPipe(cgiH._pipefd[0], "Closing pipe fd (EPOLLHUP): " + std::to_string(cgiH._pipefd[0]));
-                        cgiH.responseReady = 1;
-                    }
+						cgiH.responseReady = 1;
                 }
 			}
 		}
