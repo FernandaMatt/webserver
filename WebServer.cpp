@@ -185,7 +185,7 @@ void WebServer::addToEpollServers(){
 	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
 	for (it; it != this->_fdToServers.end(); ++it)
 	{
-		addToEpoll(it->first, EPOLLIN);
+		addToEpoll(it->first, EPOLLIN | EPOLLET);
 	}
 }
 
@@ -231,6 +231,7 @@ void WebServer::acceptConnection(int *serverFd)
 	{
         _conections[newSockFD] = it->second;
 		_requests[newSockFD] = new std::string();
+		modifyEpoll(it->first, EPOLLIN | EPOLLET);
 	}
 	else
 	{
