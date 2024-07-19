@@ -5,12 +5,12 @@
 # include <sys/socket.h>
 # include <fcntl.h>
 
-# include "Logger.hpp"
-# include "Server.hpp"
-# include "defines.hpp"
-# include "src/ResponseBuilder.hpp"
-# include "src/RequestParser.hpp"
-# include "src/cgi/HandleCGI.hpp"
+# include "../utils/Logger.hpp"
+# include "../config/Server.hpp"
+# include "../utils/defines.hpp"
+# include "../http/ResponseBuilder.hpp"
+# include "../http/RequestParser.hpp"
+# include "../cgi/HandleCGI.hpp"
 # include <csignal>
 
 

@@ -1,6 +1,6 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
-# include "Logger.hpp"
+# include "../utils/Logger.hpp"
 # include "Location.hpp"
 # include <string>
 # include <iostream>

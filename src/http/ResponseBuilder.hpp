@@ -3,16 +3,16 @@
 #include <string>
 #include <iostream>
 #include <algorithm>
-#include "../Server.hpp"
+#include "../config/Server.hpp"
+#include "../utils/Logger.hpp"
 #include "RequestParser.hpp"
-#include "../Logger.hpp"
+#include "Response.hpp"
 #include <sys/stat.h>
 #include <fstream>
 #include <sstream>
 #include <ctime>
 #include <cstdio>
 #include <map>
-#include "Response.hpp"
 
 
 class ResponseBuilder {
