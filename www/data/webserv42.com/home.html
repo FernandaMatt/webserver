@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="https://fonts.cdnfonts.com/css/futura-maxi-cg-bold" rel="stylesheet">
+    <title>Webserv - 42</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: auto;
+        }
+        body {
+            background-color: black;
+            color: white;
+            font-family: 'Futura Maxi CG Bold', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        header {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 20px;
+			box-sizing: border-box;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+			margin-right: 15px;
+            font-size: 1.1em;
+        }
+        h1 {
+            font-size: 3em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+			<a href="/about">About</a>
+            <a href="/juninho">Juninho</a>
+            <a href="/upload">Upload</a>
+			<a href="/wrongPath">Not Found</a>
+            <a href="/images">Forbidden</a>
+        </nav>
+    </header>
+    <h1>Webserv - 42</h1>
+</body>
+</html>

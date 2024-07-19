@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.cdnfonts.com/css/futura-maxi-cg-bold" rel="stylesheet">
+    <title>Juninho</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: auto;
+        }
+        body {
+            background-color: black;
+            color: white;
+            font-family: 'Futura Maxi CG Bold', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+        }
+        header {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 20px;
+			box-sizing: border-box;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+			margin-right: 15px;
+            font-size: 1.1em;
+        }
+        h1 {
+            font-size: 2.3em;
+            text-align: center;
+            margin-top: 120px;
+        }
+        .content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            width: 90%;
+        }
+        .text-container {
+            flex: 1;
+            padding-right: 20px;
+			font-size: 1.2em;
+        }
+        .image-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .image-container img {
+            max-width: 90%;
+            max-height: 70vh;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+			<a href="/about">About</a>
+            <a href="/juninho">Juninho</a>
+            <a href="/upload">Upload</a>
+			<a href="/wrongPath">Not Found</a>
+            <a href="/images">Forbidden</a>
+        </nav>
+    </header>
+    <h1>Juninho - The Rubber Duck</h1>
+    <div class="content">
+        <div class="image-container">
+            <img src="../images/sea.png" alt="Sea">
+        </div>
+		<div class="text-container">
+            <p>	In programming, a rubber duck is a method of debugging code.
+				The idea is that by explaining your code, line by line, to
+				an inanimate object like a rubber duck, you might identify
+				errors or understand the problem better.
+			</p>
+			<p>
+				Juninho is our rubber duck mascot at 42, symbolizing the
+				importance of clear thinking and communication in solving
+				programming challenges.
+			</p>
+			<p>
+				And we would like to thank Juninho and all the ohter cadets
+				that served as our ruber ducks throught the 42 journey.
+			</p>
+        </div>
+    </div>
+</body>
+</html>
