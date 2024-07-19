@@ -1,6 +1,6 @@
 #ifndef LOCATION_HPP
 # define LOCATION_HPP
-# include "defines.hpp"
+# include "../utils/defines.hpp"
 # include <iostream>
 # include <map>
 # include <vector>
