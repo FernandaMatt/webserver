@@ -32,8 +32,15 @@ class WebServer {
 		void	settingListeners();
 		void	addToEpollServers( );
 		void	addToEpoll(const int &fd, uint32_t events);
+		void	modifyEpoll(const int &fd, uint32_t events);
 		void	acceptConnection(int *serverFd);
 		void	handleConnections( );
+		void 	closeConnection(const int &fd, std::string message);
+		void 	closeCGIPipe(const int &fd, std::string message);
+		void 	clearCGIRequests(const int &fd);
+		void 	clearRequests(const int &fd);
+		int		ifResGetCGIKey(const int &fd);
+
 		int		isServerFDCheck(const int &i) const;
 		Server	delegateRequest(std::vector<Server> candidateServers, std::string host);
 

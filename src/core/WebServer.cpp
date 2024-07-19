@@ -58,6 +58,8 @@ WebServer::~WebServer() {
 		close(it->first);
 	}
 	this->_fdToServers.clear();
+
+	close (this->_epollFD);
 }
 
 void WebServer::handleSignal(int param) {
@@ -161,7 +163,22 @@ void WebServer::addToEpoll(const int &fd, uint32_t events) {
 	event.data.fd = fd;
 	event.events = events;
 	if (epoll_ctl(this->_epollFD, EPOLL_CTL_ADD, fd, &event) == -1)
-		throw std::runtime_error("epoll_ctl() failure");
+	{
+		Logger::log(LOG_ERROR, "Failed to add server socket to epoll, closing connection fd: " + std::to_string(fd));
+		close(fd);
+	}
+}
+
+void WebServer::modifyEpoll(const int &fd, uint32_t events) {
+	struct epoll_event event;
+	event.data.fd = fd;
+	event.events = events;
+	if (epoll_ctl(this->_epollFD, EPOLL_CTL_MOD, fd, &event) == -1)
+	{
+		Logger::log(LOG_ERROR, "Failed to modify server socket to epoll, closing connection fd: " + std::to_string(fd));
+		close(fd);
+		epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, fd, 0);
+	}
 }
 
 void WebServer::addToEpollServers(){
@@ -196,7 +213,7 @@ void WebServer::acceptConnection(int *serverFd)
 
 	//CHECAR COM A FERNANDA!!!!! Fernanda e Mari: Não deveria chear antes de abrir o socket com accept?
 	// check if total connections is greater than SOMAXCONN
-	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 8;
+	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 1000;
 	if (totalConnections >= SOMAXCONN)
 	{
 		if (newSockFD != -1)
@@ -211,7 +228,11 @@ void WebServer::acceptConnection(int *serverFd)
 
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
+	{
         _conections[newSockFD] = it->second;
+		_requests[newSockFD] = new std::string();
+		modifyEpoll(it->first, EPOLLIN | EPOLLET);
+	}
 	else
 	{
 		Logger::log(LOG_ERROR, "Server socket fd not found!");
@@ -221,17 +242,61 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	addToEpoll (newSockFD, EPOLLIN | EPOLLOUT);
+	addToEpoll (newSockFD, EPOLLIN | EPOLLRDHUP);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
 }
 
+void WebServer::closeConnection(const int &fd, std::string message)
+{
+	Logger::log(LOG_WARNING, message);
+	epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, fd, 0);
+	close(fd);
+	if (_conections.find(fd) != _conections.end())
+		_conections.erase(fd);
+	clearRequests(fd);
+}
+
+void WebServer::closeCGIPipe(const int &fd, std::string message)
+{
+	Logger::log(LOG_WARNING, message);
+	epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, fd, 0);
+	close(fd);
+}
+
+void WebServer::clearCGIRequests(const int &fd)
+{
+	if (_requestsCGI.find(fd) != _requestsCGI.end())
+	{
+		delete _requestsCGI[fd];
+		_requestsCGI.erase(fd);
+	}
+}
+
+void WebServer::clearRequests(const int &fd)
+{
+	if (_requests.find(fd) != _requests.end())
+	{
+		delete _requests[fd];
+		_requests.erase(fd);
+	}
+}
+
+int WebServer::ifResGetCGIKey(const int &fd)
+{
+	std::map<int, HandleCGI*>::const_iterator it = _requestsCGI.begin();
+	for (it; it != _requestsCGI.end(); ++it)
+	{
+		if (it->second->_responseFd == fd)
+			return (it->first);
+	}
+	return (-1);
+}
+
 void WebServer::handleConnections()
 {
 	struct epoll_event events[MAX_EVENTS];
-
-    ResponseBuilder response;
 
 	while (true)
 	{
@@ -246,185 +311,167 @@ void WebServer::handleConnections()
 
 		for (int i = 0; i < totalFD; i++)
 		{
-			int done = 0;
+			int fd = events[i].data.fd;
 
 			int isServerFD = isServerFDCheck(events[i].data.fd);
 			if (isServerFD != -1)
 				acceptConnection(&isServerFD);
 			else
 			{
-				int fd = events[i].data.fd;
-				char buf[BUF_SIZE];
-				memset(buf, 0, BUF_SIZE);
-				std::string request;
-				// checking for EPOLLIN event, ready to read from fd
-				if (events[i].events & EPOLLIN)
+				if (events[i].events & EPOLLRDHUP)
+				{
+					closeConnection(fd, "Connection closed on the remote side (EPOLLRDHUP): " + std::to_string(fd));
+				}
+				else if (events[i].events & EPOLLIN)
 				{
 					//check if actual fd is in CGI map, if so, read from pipe
 					if (_requestsCGI.find(fd) != _requestsCGI.end())
 					{
+						char buf[BUF_SIZE];
+						memset(buf, 0, BUF_SIZE);
 						HandleCGI &cgiH = *_requestsCGI[fd];
 
 						while (true)
 						{
+
 							ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
-							if (bread <= 0)
+							if (bread == 0)
 							{
-								if (bread == 0)
-								{
-                                    Logger::log(LOG_INFO, "Done reading from pipe cgi " + std::to_string(cgiH._pipefd[0]) + ". EOF reached.");
-                                    epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
-                                    close(cgiH._pipefd[0]);
-                                    cgiH.responseReady = 1;
-								}
-                                else {
-									Logger::log(LOG_INFO, "Something is wrong from reading pipe cgi " + std::to_string(cgiH._pipefd[0]));
-								// if bread <= 0, that means an error occurred, remove from epoll, close fds, remove from maps
-                                    epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
-                                    close(cgiH._pipefd[0]);
-                                    epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._responseFd, 0);
-                                    close(cgiH._responseFd);
-                                    _conections.erase(cgiH._responseFd);
-                                    cgiH._responseCGI = "";
-                                    delete _requestsCGI[fd];
-                                    _requestsCGI.erase(fd);
-                                    break ;
-                                }
+								closeCGIPipe(cgiH._pipefd[0], "EOF reached. Closing pipe fd: " + std::to_string(cgiH._pipefd[0]));
+                                cgiH.responseReady = 1;
+								break ;
 							}
-							cgiH._responseCGI.append(buf, bread);
-							memset(buf, 0, BUF_SIZE);
-							if (bread < BUF_SIZE)
-								break;
+							else if (bread < 0)
+							{
+								closeCGIPipe(cgiH._pipefd[0], "Error reading from pipe. Closing pipe fd: " + std::to_string(cgiH._pipefd[0]));
+								closeConnection(cgiH._responseFd, "Error reading from pipe. Closing respective connection: " + std::to_string(cgiH._responseFd));
+								clearCGIRequests(fd);
+								break ;
+							}
+							else
+							{
+								cgiH._responseCGI.append(buf, bread);
+								memset(buf, 0, BUF_SIZE);
+								if (bread < BUF_SIZE)
+									break;
+							}
 						}
 					}
 					else //else read from socket connection and get request
 					{
+						char buf[BUF_SIZE];
+						memset(buf, 0, BUF_SIZE);
 						while (true)
 						{
 							ssize_t bread = read(fd, buf, BUF_SIZE);
-							if (bread <= 0)
+							if (bread == 0)
 							{
-								if (bread == 0)
-								{
-									Logger::log(LOG_INFO, "Nothing to read, clossing connection: " + std::to_string(fd));
-								}
-								// if bread <=0 , that means an error occurred, so done is set to close the connection and remove from epoll
-								done = 1;
-								break ; //with error only break the loop for now
+								closeConnection(fd, "Connection closed by client (FIN): " + std::to_string(fd));
+								break ;
 							}
-							request.append(buf, bread);
-							memset(buf, 0, BUF_SIZE);
-							// if bread < BUF_SIZE, that means everything was read, so break the loop
-							if (bread < BUF_SIZE)
-								break;
-						}
-					}
-				}
-				if (events[i].events & EPOLLOUT)
-				{
-					//check if request is not empty
-					if (request.size() > 0)
-					{
-						httpRequest req = RequestParser::parseRequest(request);
-						//check if request is incomplete or empty
-						if (req.request_status == "incomplete" || req.request_status == "")
-						{
-							//if req is incomplete, check if requests is already in _requests map, if so, append it
-							if (_requests.find(fd) != _requests.end())
+							else if (bread < 0)
 							{
-								_requests[fd]->append(request);
-								httpRequest tmp = RequestParser::parseRequest(*_requests[fd]);
-								req = tmp;
+								closeConnection(fd, "Error reading from client: " + std::to_string(fd));
+								break ;
 							}
-							//else add request to _requests map
 							else
 							{
-								std::string *addReq = new std::string(request);
-								_requests[fd] = addReq;
+								_requests[fd]->append(buf, bread);
+								memset(buf, 0, BUF_SIZE);
+								if (bread < BUF_SIZE)
+									break;
 							}
 						}
-						//check if request is complete and if so, check if it is CGI or STATIC
-						if (req.request_status == "complete")
+						if (_requests.find(fd) != _requests.end())
 						{
-							//check if request is CGI or STATIC
-							if (req.type == "CGI")
+							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
+							if (req.request_status == "complete")
 							{
-								Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
-								HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateRequest(_conections[events[i].data.fd], req.host));
-
-                                int fdPipe = cgiHandler->executeCGI();
-
-                                if (fdPipe == -1)
-                                {
-                                    Logger::log(LOG_WARNING, "CGI script failed to execute. Error response sent. Closing connection: " + std::to_string(events[i].data.fd));
-                                    done = 1;
-                                }
-                                else {
-                                    _requestsCGI[fdPipe] = cgiHandler;
-                                    continue;
-                                }
-						    }
-                            if (req.type == "STATIC")
-                            {
-                                response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
-                                std::vector<char> responseString = response.getResponse();
-                                size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-                                if (wbytes <= 0)
-                                {
-                                    if (wbytes == -1)
-                                        Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(events[i].data.fd));
-                                }
-                                done = 1; //answer sent, close connection
-                            }
-                        }
-					}
-					//check if fd is in responseFd, if so, send response
-					std::map<int, HandleCGI*>::iterator it = _requestsCGI.begin();
-					for(it; it != _requestsCGI.end(); ++it)
-					{
-						if (it->second->_responseFd == events[i].data.fd)
-						{
-							if (it->second->_responseCGI.size() > 0 && it->second->responseReady == 1)
-							{
-                                Response response;
-                                response = it->second->getCGIResponse();
-								size_t wbytes = write(it->second->_responseFd, response.getResponse().data(), response.getResponseSize());
-								if (wbytes <= 0)
-								{
-									if(wbytes == -1)
-										Logger::log(LOG_ERROR, "write() failure, response not sent, closing connection: " + std::to_string(it->second->_responseFd));
-								}
-								delete _requestsCGI[it->first];
-								_requestsCGI.erase(it->first);
-								done = 1;
+								modifyEpoll(fd, EPOLLOUT );
 							}
-							break;
 						}
 					}
 				}
-                if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
+				else if (events[i].events & EPOLLOUT)
+				{
+					//check if fd is in requestsCGI, if so, check if response is ready
+					int cgiKey = ifResGetCGIKey(fd);
+					if (cgiKey != -1)
+					{
+						if(_requestsCGI[cgiKey]->responseReady == 1)
+						{
+							Response responseCGI;
+							responseCGI = _requestsCGI[cgiKey]->getCGIResponse();
+							size_t wbytes = write(fd, responseCGI.getResponse().data(), responseCGI.getResponseSize());
+							if (wbytes <= 0)
+							{
+								Logger::log(LOG_ERROR, "write() failure, response from CGI not sent.");
+							}
+							closeCGIPipe(cgiKey,"Closing pipe fd: " + std::to_string(cgiKey));
+							clearCGIRequests(cgiKey);
+							closeConnection(fd, "Closing respective connection: " + std::to_string(fd));
+						}
+					}
+					else
+					{
+						//check if fd is in requests, if so, parse request
+						if (_requests.find(fd) != _requests.end())
+						{
+							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
+							//check if request is complete and if so, check if it is CGI or STATIC
+							if (req.request_status == "complete")
+							{
+								//check if request is CGI or STATIC
+								if (req.type == "CGI")
+								{
+									Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
+
+									HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateRequest(_conections[events[i].data.fd], req.host));
+									int fdPipe = cgiHandler->executeCGI();
+
+									if (fdPipe == -1)
+									{
+										closeConnection(fd, "CGI script failed to execute. Closing connection: " + std::to_string(fd));
+										delete cgiHandler;
+									}
+									else {
+										_requestsCGI[fdPipe] = cgiHandler;
+										continue;
+									}
+								}
+								if (req.type == "STATIC")
+								{
+									ResponseBuilder response;
+									response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+									std::vector<char> responseString = response.getResponse();
+									size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
+									if (wbytes == 0)
+									{
+										Logger::log(LOG_ERROR, "write() failure, response not sent.");
+									}
+									else if (wbytes < responseString.size())
+									{
+										Logger::log(LOG_ERROR, "write() failure, response not sent completely.");
+									}
+									else
+									{
+										Logger::log(LOG_INFO, "Response sent successfully.");
+									}
+										closeConnection(fd, "Closing connection: " + std::to_string(fd));
+								}
+							}
+						}
+					}
+				}
+                else if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
                 {
+					char buf[BUF_SIZE];
+					memset(buf, 0, BUF_SIZE);
                     HandleCGI &cgiH = *_requestsCGI[fd];
                     ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
-                    if (bread == 0){
-                        Logger::log(LOG_INFO, "Closing pipe fd: " + std::to_string(cgiH._pipefd[0]));
-                        epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, cgiH._pipefd[0], 0);
-                        close(cgiH._pipefd[0]);
-                        cgiH.responseReady = 1;
-                    }
+                    if (bread == 0)
+						cgiH.responseReady = 1;
                 }
-				if (done)
-				{
-                    if (_requests.find(fd) != _requests.end())
-                    {
-                        delete _requests[fd];
-                        _requests.erase(fd);
-                    }
-					Logger::log(LOG_INFO, "Closing connection: " + std::to_string(events[i].data.fd));
-					epoll_ctl(this->_epollFD, EPOLL_CTL_DEL, events[i].data.fd, 0);
-                    _conections.erase(events[i].data.fd);
-					close(events[i].data.fd);
-				}
 			}
 		}
 	}
