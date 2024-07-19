@@ -1,6 +1,6 @@
 #!/usr/bin/env php-cgi
 <?php
-header('Content-Type: text/html; charset=UTF-8');
+header('Content-Type: text/html; charset=utf-8');
 
 // Define the path to the thoughts file
 $thoughtsFile = 'thoughts.txt';
@@ -10,9 +10,32 @@ $thoughts = [];
 
 // Check if the file exists and is readable
 if (file_exists($thoughtsFile) && is_readable($thoughtsFile)) {
+
+    $request_body = file_get_contents('php://input');
+    // $request_body = file_get_contents('php://stdin');
+
+    //add the request body at the end of the thoughts file
+    file_put_contents($thoughtsFile, "\n$request_body", FILE_APPEND);
+
+
+    // file_put_contents($thoughtsFile, $request_body);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+        // Check if the new thought is set and not empty
+        if (isset($_POST['newThought']) && $_POST['newThought'] !== '') {
+            // Add the new thought to the array
+            $thoughts[] = $_POST['newThought'];
+    
+            // Write the thoughts back to the file
+            file_put_contents($thoughtsFile, implode("\n", $thoughts));
+        }
+    }
     // Read the file line by line into the array
     $thoughts = file($thoughtsFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 }
+
+//Check request method
 
 // Start outputting the HTML content
 echo <<<HTML
