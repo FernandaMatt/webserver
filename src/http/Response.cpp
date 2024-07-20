@@ -101,7 +101,7 @@ void Response::loadAutoIndex(std::string &path, std::string &request_path) {
         currentDir = request_path + "/";
     else
         currentDir = "/" + request_path + "/";
-    
+
     std::string autoIndex = "<html><head><title>Index</title>";
     autoIndex += "<style>table { border-collapse: collapse; } th, td { padding: 10px; }</style>";
     autoIndex += "</head><body><h1>Index of " + currentDir + "</h1>";
@@ -243,6 +243,11 @@ void Response::loadDefaultErrorPage(int statusCode) {
             setStatusMessage(STATUS_413);
             setHttpHeaders(HEADER_413);
             setResponseContent(HTML_413);
+            break;
+        case 503:
+            setStatusMessage(STATUS_503);
+            setHttpHeaders(HEADER_503);
+            setResponseContent(HTML_503);
             break;
         default:
             setStatusMessage(STATUS_500);
