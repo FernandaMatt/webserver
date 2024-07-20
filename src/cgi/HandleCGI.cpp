@@ -146,9 +146,10 @@ char ** HandleCGI::buildEnv() {
 
     if (_request.body.size() > 0)
         _env.push_back("CONTENT_LENGTH=" + std::to_string(_request.body.size()));
-        _env.push_back("CONTENT_TYPE=");
     if (_request.headers.find("Content-Type") != _request.headers.end())
         _env.push_back("CONTENT_TYPE=" + _request.headers["Content-Type"]);
+    else
+        _env.push_back("CONTENT_TYPE=");
     _env.push_back("GATEWAY_INTERFACE=CGI/1.1");
     _env.push_back("PATH_INFO=" + _request.extraPath);
     //PATH_TRANSLATED ??
@@ -164,6 +165,10 @@ char ** HandleCGI::buildEnv() {
     for (std::map<std::string, std::string>::iterator it = _request.headers.begin(); it != _request.headers.end(); it++)
         _env.push_back("HTTP_" + it->first + "=" + it->second);
 
+    //print env
+    for (size_t i = 0; i < _env.size(); i++) {
+        Logger::log(LOG_INFO, _env[i]);
+    }
     char **env_char = convertEnv();
     return env_char;
 }
