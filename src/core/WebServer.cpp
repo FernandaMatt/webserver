@@ -231,7 +231,6 @@ void WebServer::acceptConnection(int *serverFd)
 	{
         _conections[newSockFD] = it->second;
 		_requests[newSockFD] = new std::string();
-		modifyEpoll(it->first, EPOLLIN | EPOLLET);
 	}
 	else
 	{
@@ -315,7 +314,10 @@ void WebServer::handleConnections()
 
 			int isServerFD = isServerFDCheck(events[i].data.fd);
 			if (isServerFD != -1)
+			{
 				acceptConnection(&isServerFD);
+				modifyEpoll(fd, EPOLLIN | EPOLLET);
+			}
 			else
 			{
 				if (events[i].events & EPOLLRDHUP)
