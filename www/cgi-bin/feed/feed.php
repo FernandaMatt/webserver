@@ -146,8 +146,9 @@ echo <<<HTML
             <a href="/">Home Base</a>
             <a href="/timer">Wait!</a>
             <a href="/feed/feed.php">Feed</a>
+            <a href="/upload">Upload</a>
             <a href="/wrongPath">Not Found</a>
-            <a href="/error_pages">Forbidden</a>
+            <a href="/error_pages">AutoIndex</a>
         </nav>
     </header>
     <h1>Wall of Thoughts</h1>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
-    <title>Another Server</title>
+    <title>Upload File</title>
     <style>
         html, body {
             height: 100%;
@@ -38,16 +38,17 @@
         }
         h1 {
             font-size: 3em;
-			margin-bottom: 45px;
+            margin-bottom: 20px;
         }
-        #message {
-            margin-top: 20px;
-            font-size: 1.5em;
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-		input{
-			margin-bottom: 20px;
-		}
-        .round-button {
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+        input[type="submit"] {
             background-color: rgb(251, 214, 173);
             color: rgb(11, 45, 11);
             border: none;
@@ -59,21 +60,8 @@
             cursor: pointer;
             outline: none;
         }
-        .round-button:hover {
+        input[type="submit"]:hover {
             background-color: rgb(238, 177, 108);
-        }
-		.n-input {
-			width: 300px;
-			height: 30px;
-			font-size: 1em;
-			text-align: center;
-            border-radius: 12px;
-			margin-left: 10px;
-			margin-right: 10px;
-		}
-        label, input {
-            font-size: 1.2em;
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -88,33 +76,36 @@
             <a href="/error_pages">AutoIndex</a>
         </nav>
     </header>
-    
-    <h1>Wait Page</h1>
-    <label for="seconds">Choose number of seconds to wait:</label>
-    <input type="number" id="seconds" name="seconds" min="1" class="n-input">
-    <button onclick="startWait()" class="round-button">Start Wait</button>
+    <h1>Upload File</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="file" required>
+        <input type="submit" value="Upload">
+    </form>
+
     <div id="message"></div>
 
-	<script>
-        function startWait() {
-            const seconds = document.getElementById('seconds').value;
-            if (seconds) {
-                const messageDiv = document.getElementById('message');
-                messageDiv.textContent = `Waiting for ${seconds} seconds...`;
+    <script>
+        // Função para lidar com o envio do formulário via Fetch API
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evita o comportamento padrão de envio do formulário
 
-                fetch(`/timer-cgi/timer.php?seconds=${seconds}`)
-                    .then(response => response.text())
-                    .then(data => {
-                        messageDiv.textContent = `${data}`;
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        messageDiv.textContent = 'An error occurred. Please try again.';
-                    });
-            } else {
-                alert('Please enter a number of seconds.');
-            }
-        }
+            var formData = new FormData(document.getElementById('uploadForm'));
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.status === 201) {
+                    document.getElementById('message').innerHTML = '<p>Upload realizado com sucesso!</p>';
+                } else {
+                    document.getElementById('message').innerHTML = '<p>Erro ao realizar o upload.</p>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').innerHTML = '<p>Erro ao realizar o upload.</p>';
+            });
+        });
     </script>
 </body>
 </html>
