@@ -101,7 +101,7 @@ void Response::loadAutoIndex(std::string &path, std::string &request_path) {
         currentDir = request_path + "/";
     else
         currentDir = "/" + request_path + "/";
-    
+
     std::string autoIndex = "<html><head><title>Index</title>";
     autoIndex += "<style>table { border-collapse: collapse; } th, td { padding: 10px; }</style>";
     autoIndex += "</head><body><h1>Index of " + currentDir + "</h1>";
@@ -217,37 +217,77 @@ void Response::loadErrorPage(int statusCode, Server server, bool logError) {
     loadFromFile(error_page_full_path);
 }
 
+void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
+    std::ostringstream oss;
+    oss << "HTTP/1.1 " << statusCode << " " << title << "\r\n";
+    std::string statusMessage = oss.str();
+
+    oss.str("");
+    oss << "<!DOCTYPE html>";
+    oss << "<html lang='en'>";
+    oss << "<head>";
+    oss << "<meta charset='UTF-8'>";
+    oss << "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    oss << "<title>" << statusCode << " " << title <<"</title>";
+    oss << "<style>";
+    oss << "body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }";
+    oss << "h1 { font-size: 100px; }";
+    oss << "p { font-size: 20px; }";
+    oss << "</style>";
+    oss << "</head>";
+    oss << "<body>";
+    oss << "<h1>" << statusCode << "</h1>";
+    oss << "<p>" << title << "</p>";
+    oss << "<p>by Fe, Iza e Mari</p>";
+    oss << "</body>";
+    oss << "</html>";
+
+    std::string responseContent = oss.str();
+
+    oss.str("");
+
+    oss << "Content-Type: text/html\r\nContent-Length:" << responseContent.size() << " \r\n\r\n";
+    std::string header = oss.str();
+
+    setStatusMessage(statusMessage);
+    setHttpHeaders(header);
+    setResponseContent(responseContent);
+}
+
 void Response::loadDefaultErrorPage(int statusCode) {
     switch (statusCode) {
         case 400:
-            setStatusMessage(STATUS_400);
-            setHttpHeaders(HEADER_400);
-            setResponseContent(HTML_400);
+            setDefaultErrorPage(400, "Bad Request");
+            break;
+        case 401:
+            setDefaultErrorPage(401, "Unauthorized");
             break;
         case 403:
-            setStatusMessage(STATUS_403);
-            setHttpHeaders(HEADER_403);
-            setResponseContent(HTML_403);
+            setDefaultErrorPage(403, "Forbidden");
             break;
         case 404:
-            setStatusMessage(STATUS_404);
-            setHttpHeaders(HEADER_404);
-            setResponseContent(HTML_404);
+            setDefaultErrorPage(404, "Not Found");
             break;
         case 405:
-            setStatusMessage(STATUS_405);
-            setHttpHeaders(HEADER_405);
-            setResponseContent(HTML_405);
+            setDefaultErrorPage(405, "Method Not Allowed");
             break;
         case 413:
-            setStatusMessage(STATUS_413);
-            setHttpHeaders(HEADER_413);
-            setResponseContent(HTML_413);
+            setDefaultErrorPage(413, "Request Entity Too Large");
+            break;
+        case 500:
+            setDefaultErrorPage(500, "Internal Server Error");
+            break;
+        case 501:
+            setDefaultErrorPage(501, "Not Implemented");
+            break;
+        case 502:
+            setDefaultErrorPage(502, "Bad Gateway");
+            break;
+        case 503:
+            setDefaultErrorPage(503, "Service Unavailable");
             break;
         default:
-            setStatusMessage(STATUS_500);
-            setHttpHeaders(HEADER_500);
-            setResponseContent(HTML_500);
+            setDefaultErrorPage(500, "Internal Server Error");
             break;
     }
 }
