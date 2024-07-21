@@ -91,7 +91,7 @@
 
             var formData = new FormData(document.getElementById('uploadForm'));
 
-            fetch('/upload', {
+            fetch('/upload-cgi/upload.php', {
                 method: 'POST',
                 body: formData
             })
