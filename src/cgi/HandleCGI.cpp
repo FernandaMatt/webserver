@@ -78,7 +78,7 @@ int HandleCGI::executeCGI() {
         //change directory to cgi path
         std::string cgi_path = getCGIPath();
         if (chdir(cgi_path.c_str()) == -1) {
-            perror("chdir");
+            std::perror("chdir");
             freeEnv(envp);
             free(path);
             free(script_file);
@@ -87,7 +87,7 @@ int HandleCGI::executeCGI() {
         }
 
 		if (execve(path, argv, envp) == -1) {
-			perror("execve");
+			std::perror("execve");
             freeEnv(envp);
             free(path);
             free(script_file);
