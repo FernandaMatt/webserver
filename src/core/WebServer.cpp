@@ -227,7 +227,7 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	addToEpoll (newSockFD, EPOLLIN | EPOLLRDHUP);
+	addToEpoll (newSockFD, EPOLLIN  | EPOLLOUT | EPOLLRDHUP);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
@@ -390,14 +390,6 @@ void WebServer::handleConnections()
 									break;
 							}
 						}
-						if (_requests.find(fd) != _requests.end())
-						{
-							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
-							if (req.request_status == "complete")
-							{
-								modifyEpoll(fd, EPOLLOUT);
-							}
-						}
 					}
 				}
 				else if (events[i].events & EPOLLOUT)
@@ -426,42 +418,45 @@ void WebServer::handleConnections()
 						if (_requests.find(fd) != _requests.end())
 						{
 							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
-							if (req.type == "CGI")
+							if (req.request_status == "complete")
 							{
-								Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
+								if (req.type == "CGI")
+								{
+									Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
 
-								HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateServer(_conections[events[i].data.fd], req.host));
-								int fdPipe = cgiHandler->executeCGI();
+									HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateServer(_conections[events[i].data.fd], req.host));
+									int fdPipe = cgiHandler->executeCGI();
 
-								if (fdPipe == -1)
+									if (fdPipe == -1)
+									{
+										closeConnection(fd, "CGI script failed to execute. Closing connection: " + std::to_string(fd));
+										delete cgiHandler;
+									}
+									else {
+										_requestsCGI[fdPipe] = cgiHandler;
+										continue;
+									}
+								}
+								if (req.type == "STATIC")
 								{
-									closeConnection(fd, "CGI script failed to execute. Closing connection: " + std::to_string(fd));
-									delete cgiHandler;
+									ResponseBuilder response;
+									response.buildResponse(delegateServer(_conections[events[i].data.fd], req.host), req);
+									std::vector<char> responseString = response.getResponse();
+									size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
+									if (wbytes == 0)
+									{
+										Logger::log(LOG_ERROR, "write() failure, response not sent.");
+									}
+									else if (wbytes < responseString.size())
+									{
+										Logger::log(LOG_ERROR, "write() failure, response not sent completely.");
+									}
+									else
+									{
+										Logger::log(LOG_INFO, "Response sent successfully.");
+									}
+										closeConnection(fd, "Closing connection: " + std::to_string(fd));
 								}
-								else {
-									_requestsCGI[fdPipe] = cgiHandler;
-									continue;
-								}
-							}
-							if (req.type == "STATIC")
-							{
-								ResponseBuilder response;
-								response.buildResponse(delegateServer(_conections[events[i].data.fd], req.host), req);
-								std::vector<char> responseString = response.getResponse();
-								size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-								if (wbytes == 0)
-								{
-									Logger::log(LOG_ERROR, "write() failure, response not sent.");
-								}
-								else if (wbytes < responseString.size())
-								{
-									Logger::log(LOG_ERROR, "write() failure, response not sent completely.");
-								}
-								else
-								{
-									Logger::log(LOG_INFO, "Response sent successfully.");
-								}
-									closeConnection(fd, "Closing connection: " + std::to_string(fd));
 							}
 						}
 					}
