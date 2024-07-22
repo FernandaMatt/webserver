@@ -146,7 +146,6 @@ char ** HandleCGI::buildEnv() {
 
     if (_request.body.size() > 0)
         _env.push_back("CONTENT_LENGTH=" + std::to_string(_request.body.size()));
-        _env.push_back("CONTENT_TYPE=");
     if (_request.headers.find("Content-Type") != _request.headers.end())
         _env.push_back("CONTENT_TYPE=" + _request.headers["Content-Type"]);
     _env.push_back("GATEWAY_INTERFACE=CGI/1.1");
