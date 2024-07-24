@@ -240,7 +240,7 @@ std::string RequestParser::getBody(std::string &parsing_request)
 	}
 	// if (parsing_request.substr(parsing_request.size() - 2) != std::string("\r\n")) //TEST: é necessário a request terminar com \r\n, e realmente só um é desconsiderado ? Testar com nginx e insomnia
 	// 	throw std::invalid_argument("Bad request");
-	body = parsing_request.substr(0, parsing_request.size() - 2);
+	body = parsing_request.substr(0, parsing_request.size());
 	parsing_request.clear();
 	return body;
 }
