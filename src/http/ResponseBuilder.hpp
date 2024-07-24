@@ -90,8 +90,6 @@ class ResponseBuilder {
         void searchRoot();
         void searchAlias();
         bool checkAutoIndex(std::string &path);
-        bool isCGI();
-        void processCGI();
 
 //post
         std::string vectorToString(const std::vector<char>& vec);
@@ -104,7 +102,6 @@ class ResponseBuilder {
         std::string getFileName(std::string& filename, std::string const& content_type);
         std::string getFileName(std::string const& content_type);
         std::string generateUniqueFilename(const std::string& filepath);
-        std::string generateRandomFilename();
         void    writeToFile(std::string const filename, std::vector<char> const decoded_body);
 
 };
