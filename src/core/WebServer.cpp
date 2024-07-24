@@ -455,7 +455,7 @@ void WebServer::handleConnections()
 									{
 										Logger::log(LOG_INFO, "Response sent successfully.");
 									}
-										closeConnection(fd, "Closing connection: " + std::to_string(fd));
+									closeConnection(fd, "Closing connection: " + std::to_string(fd));
 								}
 							}
 						}
