@@ -33,6 +33,7 @@ class HandleCGI {
         char        **convertEnv();
         void        freeEnv(char **env);
         void        sendErrorResponse(int statusCode, int fd);
+        std::map<std::string, std::string> parseCGIHeaders();
         std::string getCGIHeaders();
         std::string getCGIBody();
         std::string getMethod(int method);

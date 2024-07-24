@@ -214,11 +214,40 @@ bool HandleCGI::isFile(std::string path) {
 Response HandleCGI::getCGIResponse() {
     Response response;
 
-    response.setStatusMessage("HTTP/1.1 200 OK\r\n"); //change to check if Status Header was sent
+    std::map<std::string, std::string> headers = parseCGIHeaders();
+    std::string statusLine = headers["Status"];
+    if (statusLine.empty()) {
+        response.setStatusMessage("HTTP/1.1 200 OK\r\n");
+    }
+    else {
+        response.setStatusMessage("HTTP/1.1 " + statusLine + "\r\n");
+    }
     response.setHttpHeaders(getCGIHeaders());
     response.setResponseContent(getCGIBody());
 
     return response;
+}
+
+std::map<std::string, std::string> HandleCGI::parseCGIHeaders()
+{
+    std::map<std::string, std::string> headers;
+    std::string header = getCGIHeaders();
+    size_t pos = 0;
+    size_t end = header.find("\r\n", pos);
+    while (end != std::string::npos && end != pos) {
+        std::string line = header.substr(pos, end);
+        size_t colon = line.find(":");
+        if (colon != std::string::npos) {
+            std::string key = line.substr(0, colon);
+            std::string value = line.substr(colon + 2);
+            while (value.size() && (value.back() == '\n' || value.back() == '\r'))
+                value.pop_back();
+            headers[key] = value;
+        }
+        pos = end + 2;
+        end = header.find("\r\n", pos);
+    }
+    return headers;
 }
 
 std::string HandleCGI::getCGIHeaders() {
