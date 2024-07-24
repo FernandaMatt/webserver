@@ -98,22 +98,6 @@ bool ResponseBuilder::pathIsFile() {
         _response.loadFromFile(file_path);
         return true;
     }
-
-    // std::string file_name;
-    // std::string index_file_path;
-    // std::vector<std::string> index = _server.get_index();
-    // for (size_t i = 0; i < index.size(); i++) {
-    // file_name = index[i];
-    //     if (file_name[0] == '/')
-    //         file_name = file_name.substr(1);
-    //     if (file_name[file_name.size() - 1] == '/')
-    //         file_name = file_name.substr(0, file_name.size() - 1);
-    //     index_file_path = file_path + '/' +file_name;
-    //     if (isFile(index_file_path)) {
-    //         _response.loadFromFile(index_file_path);
-    //         return true;
-    //     }
-    // }
     return false;
 }
 
@@ -170,7 +154,6 @@ void ResponseBuilder::searchRoot() {
                 return;
             throw ForbiddenException();
         }
-        // file_path += "/" + index_file_path;
         loadResponseFromFile(index_file_path);
         return;
     }
@@ -201,16 +184,6 @@ void ResponseBuilder::defineErrorPage(int statusCode) {
         _response.loadDefaultErrorPage(statusCode);
         return;
     }
-}
-
-bool ResponseBuilder::isCGI() {
-    // std::string path = _parsedRequest.path;
-    // std::string cgi_extension = _server.get_cgi_extension();
-    // if (path.length() < cgi_extension.length())
-    //     return false;
-    // if (path.substr(path.length() - cgi_extension.length()) == cgi_extension)
-    //     return true;
-    return false;
 }
 
 void ResponseBuilder::processGET() {
