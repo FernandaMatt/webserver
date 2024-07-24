@@ -214,7 +214,7 @@ bool HandleCGI::isFile(std::string path) {
 Response HandleCGI::getCGIResponse() {
     Response response;
 
-    response.setStatusMessage("HTTP/1.1 200 OK\r\n");
+    response.setStatusMessage("HTTP/1.1 200 OK\r\n"); //change to check if Status Header was sent
     response.setHttpHeaders(getCGIHeaders());
     response.setResponseContent(getCGIBody());
 
@@ -223,11 +223,15 @@ Response HandleCGI::getCGIResponse() {
 
 std::string HandleCGI::getCGIHeaders() {
     size_t header_end = _responseCGI.find("\r\n\r\n");
+    if (header_end == std::string::npos)
+        return "";
     return _responseCGI.substr(0, header_end + 4);
 }
 
 std::string HandleCGI::getCGIBody() {
     size_t header_end = _responseCGI.find("\r\n\r\n");
+    if (header_end == std::string::npos)
+        return "";
     return _responseCGI.substr(header_end + 4);
 }
 
