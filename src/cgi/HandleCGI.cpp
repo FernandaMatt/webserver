@@ -160,6 +160,8 @@ char ** HandleCGI::buildEnv() {
     _env.push_back("SERVER_PORT=" + _request.port);
     _env.push_back("SERVER_PROTOCOL=" + _request.version);
     _env.push_back("SERVER_SOFTWARE=webserv/1.0");
+    _env.push_back("REDIRECT_STATUS=200");
+
     for (std::map<std::string, std::string>::iterator it = _request.headers.begin(); it != _request.headers.end(); it++)
         _env.push_back("HTTP_" + it->first + "=" + it->second);
 
@@ -212,27 +214,11 @@ bool HandleCGI::isFile(std::string path) {
 Response HandleCGI::getCGIResponse() {
     Response response;
 
-    if (!checkResponse())
-        response.loadErrorPage(500, _server, false);
-    else {
-        response.setStatusMessage("HTTP/1.1 200 OK\r\n");
-        response.setHttpHeaders(getCGIHeaders());
-        response.setResponseContent(getCGIBody());
-    }
+    response.setStatusMessage("HTTP/1.1 200 OK\r\n");
+    response.setHttpHeaders(getCGIHeaders());
+    response.setResponseContent(getCGIBody());
 
     return response;
-}
-
-bool HandleCGI::checkResponse() {
-    std::string status_line = _responseCGI.substr(0, _responseCGI.find("\r\n"));
-    std::transform(status_line.begin(), status_line.end(), status_line.begin(), ::toupper);
-    size_t pos = status_line.find("CONTENT-TYPE:");
-    size_t header_end = _responseCGI.find("\r\n\r\n");
-    if (header_end == std::string::npos)
-        header_end = _responseCGI.find("\n\n");
-    if (pos == std::string::npos || pos > header_end)
-        return false;
-    return true;
 }
 
 std::string HandleCGI::getCGIHeaders() {

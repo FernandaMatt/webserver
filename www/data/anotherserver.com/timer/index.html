@@ -101,7 +101,7 @@
                 const messageDiv = document.getElementById('message');
                 messageDiv.textContent = `Waiting for ${seconds} seconds...`;
 
-                fetch(`/timer-cgi/timer.php?seconds=${seconds}`)
+                fetch(`/cgi/timer.php?seconds=${seconds}`)
                     .then(response => response.text())
                     .then(data => {
                         messageDiv.textContent = `${data}`;
