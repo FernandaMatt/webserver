@@ -141,7 +141,7 @@ void ResponseBuilder::searchAlias() {
     }
     std::string index_file_path = _location.search_index_file(alias);
     if (index_file_path == "") {
-        if (checkAutoIndex(alias))
+        if (isDirectory(alias) && checkAutoIndex(alias))
             return;
         throw ForbiddenException();
     }
@@ -583,10 +583,21 @@ void ResponseBuilder::processDELETE() {
     bool location_found = false;
     std::vector<Location> locations = _server.get_location();
     for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++) {
-        if (it->get_path() == path) {
+        if (it->get_path() == path + filename) {
             _location = *it;
             location_found = true;
+            path += filename;
+            filename.clear();
             break;
+        }
+    }
+    if (location_found == false) {
+        for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++) {
+            if (it->get_path() == path) {
+                _location = *it;
+                location_found = true;
+                break;
+            }
         }
     }
     if (location_found == false)
@@ -608,7 +619,9 @@ void ResponseBuilder::processDELETE() {
             complete_path = _location.get_alias();
     }
 
-    if (isFile(complete_path) && access(complete_path.c_str(), F_OK)) {
+    if (isDirectory(complete_path))
+        throw ForbiddenException();
+    if (isFile(complete_path) && access(complete_path.c_str(), F_OK) == 0) {
        if (std::remove(complete_path.c_str()) != 0)
             throw InternalServerErrorException();
     }

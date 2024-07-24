@@ -69,7 +69,7 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
         Logger::log(LOG_ERROR, "Error opening directory: " + directoryPath);
     }
 
-    auto dotIt = std::find_if(filesInfo.begin(), filesInfo.end(), [](const FileInfo& fileInfo) {
+    std::vector<FileInfo>::iterator dotIt = std::find_if(filesInfo.begin(), filesInfo.end(), [](const FileInfo& fileInfo) {
         return fileInfo.name == ".";
     });
     if (dotIt != filesInfo.end()) {
@@ -80,7 +80,7 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
         std::iter_swap(filesInfo.begin(), dotIt);
     }
 
-    auto dotDotIt = std::find_if(filesInfo.begin() + 1, filesInfo.end(), [](const FileInfo& fileInfo) {
+    std::vector<FileInfo>::iterator dotDotIt = std::find_if(filesInfo.begin() + 1, filesInfo.end(), [](const FileInfo& fileInfo) {
         return fileInfo.name == "..";
     });
     if (dotDotIt != filesInfo.end()) {
