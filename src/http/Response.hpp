@@ -37,6 +37,7 @@ class Response {
         const std::vector<char> getResponse() const;
         int getResponseSize() const;
 
+        void setErrorStatusMessage(int statusCode);
         void setStatusMessage(const char *statusMessage); //see if i can receive the macro as string
         void setHttpHeaders(const char *httpHeaders);
         void setResponseContent(const char *responseContent);

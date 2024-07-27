@@ -177,6 +177,7 @@ void ResponseBuilder::defineErrorPage(int statusCode) {
     }
     //error_page_path = _server.get_root() + error_page_path;
     try {
+        _response.setErrorStatusMessage(statusCode);
         loadResponseFromFile(error_page_path);
     }
     catch (ForbiddenException &e) { //STOP USING EXCEPTIONS FOR FLOW CONTROL <<<< This catch is inside another catch, which is not good
@@ -408,6 +409,7 @@ std::map<std::string, std::vector<char>>   ResponseBuilder::postMultipartBody(st
                 part_end = body_content.size();
             else
                 part_end -= 4;
+            
             if (part_end < part_start)
                 throw BadRequestException(); //invalid format
             //add o conteudo no vetor
@@ -415,11 +417,11 @@ std::map<std::string, std::vector<char>>   ResponseBuilder::postMultipartBody(st
                 complete_filename = getFileName(filename, content_type);
                 std::vector<char> file_content(body_content.begin() + part_start, body_content.begin() + part_end);
                 map.insert(std::pair<std::string, std::vector<char>>(complete_filename, file_content));
-                //writeToFile(complete_filename, file_content);
             }
             pos = part_end + 2;
         }
     }
+
     return map;
 }
 
@@ -449,17 +451,11 @@ std::string  ResponseBuilder::getFileName(std::string& filename, std::string con
     std::string path;
     std::string complete_path;
     
-    if (!_location.get_upload_path().empty() && _location.get_upload_path()[0] != '/') {
-        if (!_location.get_root().empty())
-            path = _location.get_root() + '/' + _location.get_upload_path() + '/';
-        else
-            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';
-    }
-    else
+    if (!_location.get_upload_path().empty())
         path = _location.get_upload_path() + '/';
     
     if (!isDirectory(path))
-        throw ForbiddenException();
+        throw InternalServerErrorException();
     
     if (!filename.empty()) {
         if (filename[0] == '/')
@@ -482,17 +478,11 @@ std::string  ResponseBuilder::getFileName(std::string const& content_type) {
     std::string path;
     std::string complete_path;
 
-    if (!_location.get_upload_path().empty() && _location.get_upload_path()[0] != '/') {
-        if (!_location.get_root().empty())
-            path = _location.get_root() + '/' + _location.get_upload_path() + '/';
-        else
-            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';        
-    }
-    else
+    if (!_location.get_upload_path().empty())
         path = _location.get_upload_path() + '/';
 
     if (!isDirectory(path))
-        throw ForbiddenException();
+        throw InternalServerErrorException();
 
     size_t pos = content_type.find('/');
     std::string filename;
