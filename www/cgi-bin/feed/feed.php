@@ -144,7 +144,6 @@ echo <<<HTML
     <header>
         <nav>
             <a href="/">Home Base</a>
-            <a href="/cgi/ubuntu_cgi_tester.php">Tester</a>
             <a href="/timer">Wait!</a>
             <a href="/feed/feed.php">Feed</a>
             <a href="/wrongPath">Not Found</a>
