@@ -1,10 +1,6 @@
-#!/usr/bin/env php
+#!/usr/bin/env php-cgi
 <?php
 // Example query string
-
-// Read the raw POST data from php://input
-$request_body = file_get_contents('php://stdin');
-
 $query_string = getenv('QUERY_STRING');
 
 // Parse the query string into an associative array
@@ -27,5 +23,6 @@ $message = "The wait is over! $seconds seconds of your life are gone, Congrats!"
 
 $length = strlen($message);
 
-echo "Content-Type: text/plain\r\n\r\n$message";
+header('Content-Type: text/html; charset=utf-8');
+echo($message)
 ?>

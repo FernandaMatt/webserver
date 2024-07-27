@@ -160,6 +160,8 @@ char ** HandleCGI::buildEnv() {
     _env.push_back("SERVER_PORT=" + _request.port);
     _env.push_back("SERVER_PROTOCOL=" + _request.version);
     _env.push_back("SERVER_SOFTWARE=webserv/1.0");
+    _env.push_back("REDIRECT_STATUS=200");
+
     for (std::map<std::string, std::string>::iterator it = _request.headers.begin(); it != _request.headers.end(); it++)
         _env.push_back("HTTP_" + it->first + "=" + it->second);
 
@@ -212,36 +214,53 @@ bool HandleCGI::isFile(std::string path) {
 Response HandleCGI::getCGIResponse() {
     Response response;
 
-    if (!checkResponse())
-        response.loadErrorPage(500, _server, false);
-    else {
+    std::map<std::string, std::string> headers = parseCGIHeaders();
+    std::string statusLine = headers["Status"];
+    if (statusLine.empty()) {
         response.setStatusMessage("HTTP/1.1 200 OK\r\n");
-        response.setHttpHeaders(getCGIHeaders());
-        response.setResponseContent(getCGIBody());
     }
+    else {
+        response.setStatusMessage("HTTP/1.1 " + statusLine + "\r\n");
+    }
+    response.setHttpHeaders(getCGIHeaders());
+    response.setResponseContent(getCGIBody());
 
     return response;
 }
 
-bool HandleCGI::checkResponse() {
-    std::string status_line = _responseCGI.substr(0, _responseCGI.find("\r\n"));
-    std::transform(status_line.begin(), status_line.end(), status_line.begin(), ::toupper);
-    size_t pos = status_line.find("CONTENT-TYPE:");
-    size_t header_end = _responseCGI.find("\r\n\r\n");
-    if (header_end == std::string::npos)
-        header_end = _responseCGI.find("\n\n");
-    if (pos == std::string::npos || pos > header_end)
-        return false;
-    return true;
+std::map<std::string, std::string> HandleCGI::parseCGIHeaders()
+{
+    std::map<std::string, std::string> headers;
+    std::string header = getCGIHeaders();
+    size_t pos = 0;
+    size_t end = header.find("\r\n", pos);
+    while (end != std::string::npos && end != pos) {
+        std::string line = header.substr(pos, end);
+        size_t colon = line.find(":");
+        if (colon != std::string::npos) {
+            std::string key = line.substr(0, colon);
+            std::string value = line.substr(colon + 2);
+            while (value.size() && (value.back() == '\n' || value.back() == '\r'))
+                value.pop_back();
+            headers[key] = value;
+        }
+        pos = end + 2;
+        end = header.find("\r\n", pos);
+    }
+    return headers;
 }
 
 std::string HandleCGI::getCGIHeaders() {
     size_t header_end = _responseCGI.find("\r\n\r\n");
+    if (header_end == std::string::npos)
+        return "";
     return _responseCGI.substr(0, header_end + 4);
 }
 
 std::string HandleCGI::getCGIBody() {
     size_t header_end = _responseCGI.find("\r\n\r\n");
+    if (header_end == std::string::npos)
+        return "";
     return _responseCGI.substr(header_end + 4);
 }
 

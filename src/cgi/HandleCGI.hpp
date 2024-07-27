@@ -19,9 +19,9 @@
 # include <cstring>
 
 class HandleCGI {
-	private:
-		httpRequest                 _request;
-		std::vector<std::string>    _env;
+    private:
+        httpRequest                 _request;
+        std::vector<std::string>    _env;
         int                         _fdEpool;
 
         bool        getCGILocation(Location &location);
@@ -29,28 +29,28 @@ class HandleCGI {
         std::string getCGIPath();
         bool        isDirectory(std::string path);
         bool        isFile(std::string path);
-		char        **buildEnv();
-		char	    **convertEnv();
-        void	    freeEnv(char **env);
+        char        **buildEnv();
+        char        **convertEnv();
+        void        freeEnv(char **env);
         void        sendErrorResponse(int statusCode, int fd);
-        bool        checkResponse();
+        std::map<std::string, std::string> parseCGIHeaders();
         std::string getCGIHeaders();
         std::string getCGIBody();
         std::string getMethod(int method);
 
-	public:
-		HandleCGI();
-		~HandleCGI();
-		HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Server server);
+    public:
+        HandleCGI();
+        ~HandleCGI();
+        HandleCGI(httpRequest parsedRequest, int &fdEpool, int responseFd, Server server);
 
-		int         executeCGI();
+        int         executeCGI();
         Response    getCGIResponse();
 
         int         _pipefd[2];
         int         _responseFd;
         bool        responseReady;
         Server      _server;
-		std::string	_responseCGI;
+        std::string _responseCGI;
 
 };
 
