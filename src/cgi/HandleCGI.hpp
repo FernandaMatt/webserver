@@ -27,6 +27,7 @@ class HandleCGI {
         bool        getCGILocation(Location &location);
         std::string getFullCGIPath();
         std::string getCGIPath();
+        std::string getPathTranslated();
         bool        isDirectory(std::string path);
         bool        isFile(std::string path);
         char        **buildEnv();

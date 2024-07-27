@@ -27,6 +27,7 @@ httpRequest RequestParser::parseRequest(std::string request)
 	parsing_request = request;
     req.queryVariables.clear();
     req.extraPath.clear();
+    req.aliasPath.clear();
 	try {
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
@@ -34,7 +35,7 @@ httpRequest RequestParser::parseRequest(std::string request)
         if (req.type == "CGI") {
             req.extraPath = getExtraPath(req.path);
             req.CGIfilename = getCGIfilename(req.path);
-            req.path = getCGIPath(req.path);
+            req.CGIpath = getCGIPath(req.path);
         }
         if (parsing_request[0] == '?') {
             req.queryString = getQueryString(parsing_request);
