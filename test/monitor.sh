@@ -1,7 +1,7 @@
 #!/bin/bash
 
 URL="http://localhost:8042/"
-DURATION="5S"
+DURATION="60S"
 CONCURRENT_USERS=10
 MEMORY_THRESHOLD_PERCENT=5  # Adjust as needed (represents 5% of total memory)
 CHECK_INTERVAL=10  # in seconds

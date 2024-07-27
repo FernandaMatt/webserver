@@ -36,8 +36,10 @@ typedef struct httpRequest
 {
 	httpMethod method;
 	std::string path;
+	std::string aliasPath;
     std::string extraPath;
     std::string CGIfilename;
+    std::string CGIpath;
 	std::string version;
 	std::map<std::string, std::string> headers;
 	std::map<std::string, std::string> queryVariables;

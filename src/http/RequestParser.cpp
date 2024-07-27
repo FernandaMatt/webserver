@@ -27,6 +27,7 @@ httpRequest RequestParser::parseRequest(std::string request)
 	parsing_request = request;
     req.queryVariables.clear();
     req.extraPath.clear();
+    req.aliasPath.clear();
 	try {
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
@@ -34,7 +35,7 @@ httpRequest RequestParser::parseRequest(std::string request)
         if (req.type == "CGI") {
             req.extraPath = getExtraPath(req.path);
             req.CGIfilename = getCGIfilename(req.path);
-            req.path = getCGIPath(req.path);
+            req.CGIpath = getCGIPath(req.path);
         }
         if (parsing_request[0] == '?') {
             req.queryString = getQueryString(parsing_request);
@@ -238,9 +239,10 @@ std::string RequestParser::getBody(std::string &parsing_request)
 	if(parsing_request.empty()){
 		return "";
 	}
-	// if (parsing_request.substr(parsing_request.size() - 2) != std::string("\r\n")) //TEST: é necessário a request terminar com \r\n, e realmente só um é desconsiderado ? Testar com nginx e insomnia
-	// 	throw std::invalid_argument("Bad request");
-	body = parsing_request.substr(0, parsing_request.size() - 2);
+	if (parsing_request.substr(parsing_request.size() - 2) != std::string("\r\n")) //TEST: é necessário a request terminar com \r\n, e realmente só um é desconsiderado ? Testar com nginx e insomnia
+		body = parsing_request.substr(0, parsing_request.size());
+    else
+	    body = parsing_request.substr(0, parsing_request.size() - 2);
 	parsing_request.clear();
 	return body;
 }

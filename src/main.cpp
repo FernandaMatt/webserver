@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
 	std::string config_file;
 	if (argc == 1)
-		config_file = "src/server_local.conf";
+		config_file = "/home/42/webserv/webserver/conf/server_local.conf";
 	else
 		config_file = argv[1];
 

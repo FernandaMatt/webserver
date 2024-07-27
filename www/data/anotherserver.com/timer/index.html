@@ -84,7 +84,7 @@
             <a href="/timer">Wait!</a>
             <a href="/feed/feed.php">Feed</a>
             <a href="/wrongPath">Not Found</a>
-            <a href="/error_pages">Forbidden</a>
+            <a href="/error_pages">Auto Index</a>
         </nav>
     </header>
     
@@ -101,7 +101,7 @@
                 const messageDiv = document.getElementById('message');
                 messageDiv.textContent = `Waiting for ${seconds} seconds...`;
 
-                fetch(`/timer-cgi/timer.php?seconds=${seconds}`)
+                fetch(`/cgi/timer.php?seconds=${seconds}`)
                     .then(response => response.text())
                     .then(data => {
                         messageDiv.textContent = `${data}`;

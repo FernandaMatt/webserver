@@ -98,22 +98,6 @@ bool ResponseBuilder::pathIsFile() {
         _response.loadFromFile(file_path);
         return true;
     }
-
-    // std::string file_name;
-    // std::string index_file_path;
-    // std::vector<std::string> index = _server.get_index();
-    // for (size_t i = 0; i < index.size(); i++) {
-    // file_name = index[i];
-    //     if (file_name[0] == '/')
-    //         file_name = file_name.substr(1);
-    //     if (file_name[file_name.size() - 1] == '/')
-    //         file_name = file_name.substr(0, file_name.size() - 1);
-    //     index_file_path = file_path + '/' +file_name;
-    //     if (isFile(index_file_path)) {
-    //         _response.loadFromFile(index_file_path);
-    //         return true;
-    //     }
-    // }
     return false;
 }
 
@@ -141,7 +125,7 @@ void ResponseBuilder::searchAlias() {
     }
     std::string index_file_path = _location.search_index_file(alias);
     if (index_file_path == "") {
-        if (checkAutoIndex(alias))
+        if (isDirectory(alias) && checkAutoIndex(alias))
             return;
         throw ForbiddenException();
     }
@@ -170,7 +154,6 @@ void ResponseBuilder::searchRoot() {
                 return;
             throw ForbiddenException();
         }
-        // file_path += "/" + index_file_path;
         loadResponseFromFile(index_file_path);
         return;
     }
@@ -194,6 +177,7 @@ void ResponseBuilder::defineErrorPage(int statusCode) {
     }
     //error_page_path = _server.get_root() + error_page_path;
     try {
+        _response.setErrorStatusMessage(statusCode);
         loadResponseFromFile(error_page_path);
     }
     catch (ForbiddenException &e) { //STOP USING EXCEPTIONS FOR FLOW CONTROL <<<< This catch is inside another catch, which is not good
@@ -201,16 +185,6 @@ void ResponseBuilder::defineErrorPage(int statusCode) {
         _response.loadDefaultErrorPage(statusCode);
         return;
     }
-}
-
-bool ResponseBuilder::isCGI() {
-    // std::string path = _parsedRequest.path;
-    // std::string cgi_extension = _server.get_cgi_extension();
-    // if (path.length() < cgi_extension.length())
-    //     return false;
-    // if (path.substr(path.length() - cgi_extension.length()) == cgi_extension)
-    //     return true;
-    return false;
 }
 
 void ResponseBuilder::processGET() {
@@ -435,6 +409,7 @@ std::map<std::string, std::vector<char>>   ResponseBuilder::postMultipartBody(st
                 part_end = body_content.size();
             else
                 part_end -= 4;
+            
             if (part_end < part_start)
                 throw BadRequestException(); //invalid format
             //add o conteudo no vetor
@@ -442,11 +417,11 @@ std::map<std::string, std::vector<char>>   ResponseBuilder::postMultipartBody(st
                 complete_filename = getFileName(filename, content_type);
                 std::vector<char> file_content(body_content.begin() + part_start, body_content.begin() + part_end);
                 map.insert(std::pair<std::string, std::vector<char>>(complete_filename, file_content));
-                //writeToFile(complete_filename, file_content);
             }
             pos = part_end + 2;
         }
     }
+
     return map;
 }
 
@@ -476,17 +451,11 @@ std::string  ResponseBuilder::getFileName(std::string& filename, std::string con
     std::string path;
     std::string complete_path;
     
-    if (!_location.get_upload_path().empty() && _location.get_upload_path()[0] != '/') {
-        if (!_location.get_root().empty())
-            path = _location.get_root() + '/' + _location.get_upload_path() + '/';
-        else
-            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';
-    }
-    else
+    if (!_location.get_upload_path().empty())
         path = _location.get_upload_path() + '/';
     
     if (!isDirectory(path))
-        throw ForbiddenException();
+        throw InternalServerErrorException();
     
     if (!filename.empty()) {
         if (filename[0] == '/')
@@ -509,17 +478,11 @@ std::string  ResponseBuilder::getFileName(std::string const& content_type) {
     std::string path;
     std::string complete_path;
 
-    if (!_location.get_upload_path().empty() && _location.get_upload_path()[0] != '/') {
-        if (!_location.get_root().empty())
-            path = _location.get_root() + '/' + _location.get_upload_path() + '/';
-        else
-            path = _location.get_alias() + '/' + _location.get_upload_path() + '/';        
-    }
-    else
+    if (!_location.get_upload_path().empty())
         path = _location.get_upload_path() + '/';
 
     if (!isDirectory(path))
-        throw ForbiddenException();
+        throw InternalServerErrorException();
 
     size_t pos = content_type.find('/');
     std::string filename;
@@ -583,10 +546,21 @@ void ResponseBuilder::processDELETE() {
     bool location_found = false;
     std::vector<Location> locations = _server.get_location();
     for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++) {
-        if (it->get_path() == path) {
+        if (it->get_path() == path + filename) {
             _location = *it;
             location_found = true;
+            path += filename;
+            filename.clear();
             break;
+        }
+    }
+    if (location_found == false) {
+        for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); it++) {
+            if (it->get_path() == path) {
+                _location = *it;
+                location_found = true;
+                break;
+            }
         }
     }
     if (location_found == false)
@@ -608,7 +582,9 @@ void ResponseBuilder::processDELETE() {
             complete_path = _location.get_alias();
     }
 
-    if (isFile(complete_path) && access(complete_path.c_str(), F_OK)) {
+    if (isDirectory(complete_path))
+        throw ForbiddenException();
+    if (isFile(complete_path) && access(complete_path.c_str(), F_OK) == 0) {
        if (std::remove(complete_path.c_str()) != 0)
             throw InternalServerErrorException();
     }

@@ -44,7 +44,6 @@ void Response::loadFromFile(const std::string& filePath, bool logError)
     oss << "Content-Length: " << _responseContent.size() << "\r\n";
     oss << "Content-Type: " << contentType << "\r\n\r\n";
     setHttpHeaders(oss.str());
-    setStatusMessage("HTTP/1.1 200 OK\r\n");
     loaded = true;
 }
 
@@ -69,7 +68,7 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
         Logger::log(LOG_ERROR, "Error opening directory: " + directoryPath);
     }
 
-    auto dotIt = std::find_if(filesInfo.begin(), filesInfo.end(), [](const FileInfo& fileInfo) {
+    std::vector<FileInfo>::iterator dotIt = std::find_if(filesInfo.begin(), filesInfo.end(), [](const FileInfo& fileInfo) {
         return fileInfo.name == ".";
     });
     if (dotIt != filesInfo.end()) {
@@ -80,7 +79,7 @@ std::vector<FileInfo> Response::getFilesInDirectory(const std::string &directory
         std::iter_swap(filesInfo.begin(), dotIt);
     }
 
-    auto dotDotIt = std::find_if(filesInfo.begin() + 1, filesInfo.end(), [](const FileInfo& fileInfo) {
+    std::vector<FileInfo>::iterator dotDotIt = std::find_if(filesInfo.begin() + 1, filesInfo.end(), [](const FileInfo& fileInfo) {
         return fileInfo.name == "..";
     });
     if (dotDotIt != filesInfo.end()) {
@@ -101,7 +100,7 @@ void Response::loadAutoIndex(std::string &path, std::string &request_path) {
         currentDir = request_path + "/";
     else
         currentDir = "/" + request_path + "/";
-    
+
     std::string autoIndex = "<html><head><title>Index</title>";
     autoIndex += "<style>table { border-collapse: collapse; } th, td { padding: 10px; }</style>";
     autoIndex += "</head><body><h1>Index of " + currentDir + "</h1>";
@@ -217,37 +216,117 @@ void Response::loadErrorPage(int statusCode, Server server, bool logError) {
     loadFromFile(error_page_full_path);
 }
 
+void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
+    std::ostringstream oss;
+    oss << "HTTP/1.1 " << statusCode << " " << title << "\r\n";
+    std::string statusMessage = oss.str();
+    std::cout << "statusMessage = " << statusMessage << std::endl;
+
+    oss.str("");
+    oss << "<!DOCTYPE html>";
+    oss << "<html lang='en'>";
+    oss << "<head>";
+    oss << "<meta charset='UTF-8'>";
+    oss << "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    oss << "<title>" << statusCode << " " << title <<"</title>";
+    oss << "<style>";
+    oss << "body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }";
+    oss << "h1 { font-size: 100px; }";
+    oss << "p { font-size: 20px; }";
+    oss << "</style>";
+    oss << "</head>";
+    oss << "<body>";
+    oss << "<h1>" << statusCode << "</h1>";
+    oss << "<p>" << title << "</p>";
+    oss << "<p>by Fe, Iza e Mari</p>";
+    oss << "</body>";
+    oss << "</html>";
+
+    std::string responseContent = oss.str();
+
+    oss.str("");
+
+    oss << "Content-Type: text/html\r\nContent-Length:" << responseContent.size() << " \r\n\r\n";
+    std::string header = oss.str();
+
+    setStatusMessage(statusMessage);
+    setHttpHeaders(header);
+    setResponseContent(responseContent);
+}
+
+void Response::setErrorStatusMessage(int statusCode) {
+    switch (statusCode) {
+        case 400:
+            setStatusMessage("HTTP/1.1 400 Bad Request\r\n");
+            break;
+        case 401:
+            setStatusMessage("HTTP/1.1 401 Unauthorized\r\n");
+            break;
+        case 403:
+            setStatusMessage("HTTP/1.1 403 Forbidden\r\n");
+            break;
+        case 404:
+            setStatusMessage("HTTP/1.1 404 Not Found\r\n");
+            break;
+        case 405:
+            setStatusMessage("HTTP/1.1 405 Method Not Allowed\r\n");
+            break;
+        case 413:
+            setStatusMessage("HTTP/1.1 413 Request Entity Too Large\r\n");
+            break;
+        case 500:
+            setStatusMessage("HTTP/1.1 500 Internal Server Error\r\n");
+            break;
+        case 501:
+            setStatusMessage("HTTP/1.1 501 Not Implemented\r\n");
+            break;
+        case 502:
+            setStatusMessage("HTTP/1.1 502 Bad Gateway\r\n");
+            break;
+        case 503:
+            setStatusMessage("HTTP/1.1 503 Service Unavailable\r\n");
+            break;
+        default:
+            setStatusMessage("HTTP/1.1 500 Internal Server Error\r\n");
+            break;
+    }
+
+}
+
 void Response::loadDefaultErrorPage(int statusCode) {
     switch (statusCode) {
         case 400:
-            setStatusMessage(STATUS_400);
-            setHttpHeaders(HEADER_400);
-            setResponseContent(HTML_400);
+            setDefaultErrorPage(400, "Bad Request");
+            break;
+        case 401:
+            setDefaultErrorPage(401, "Unauthorized");
             break;
         case 403:
-            setStatusMessage(STATUS_403);
-            setHttpHeaders(HEADER_403);
-            setResponseContent(HTML_403);
+            setDefaultErrorPage(403, "Forbidden");
             break;
         case 404:
-            setStatusMessage(STATUS_404);
-            setHttpHeaders(HEADER_404);
-            setResponseContent(HTML_404);
+            setDefaultErrorPage(404, "Not Found");
             break;
         case 405:
-            setStatusMessage(STATUS_405);
-            setHttpHeaders(HEADER_405);
-            setResponseContent(HTML_405);
+            setDefaultErrorPage(405, "Method Not Allowed");
             break;
         case 413:
-            setStatusMessage(STATUS_413);
-            setHttpHeaders(HEADER_413);
-            setResponseContent(HTML_413);
+            setDefaultErrorPage(413, "Request Entity Too Large");
+            break;
+        case 500:
+            setDefaultErrorPage(500, "Internal Server Error");
+            break;
+        case 501:
+            setDefaultErrorPage(501, "Not Implemented");
+            break;
+        case 502:
+            setDefaultErrorPage(502, "Bad Gateway");
+            break;
+        case 503:
+            setDefaultErrorPage(503, "Service Unavailable");
             break;
         default:
-            setStatusMessage(STATUS_500);
-            setHttpHeaders(HEADER_500);
-            setResponseContent(HTML_500);
+            setDefaultErrorPage(500, "Internal Server Error");
             break;
     }
 }

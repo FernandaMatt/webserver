@@ -68,7 +68,7 @@ void WebServer::handleSignal(int param) {
 	Logger::log(LOG_INFO, "Signal received, stopping server...");
 }
 
-Server WebServer::delegateRequest(std::vector<Server> candidateServers, std::string host) {
+Server WebServer::delegateServer(std::vector<Server> candidateServers, std::string host) {
 	for (std::vector<Server>::iterator itServer = candidateServers.begin(); itServer != candidateServers.end(); ++itServer) {
 		std::vector<std::string> servernames = itServer->get_server_name();
 		for (std::vector<std::string>::iterator itServerName = servernames.begin(); itServerName != servernames.end(); ++itServerName) {
@@ -158,6 +158,14 @@ void WebServer::settingListeners() {
 	}
 }
 
+void WebServer::addToEpollServers(){
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		addToEpoll(it->first, EPOLLIN | EPOLLET);
+	}
+}
+
 void WebServer::addToEpoll(const int &fd, uint32_t events) {
 	struct epoll_event event;
 	event.data.fd = fd;
@@ -181,24 +189,6 @@ void WebServer::modifyEpoll(const int &fd, uint32_t events) {
 	}
 }
 
-void WebServer::addToEpollServers(){
-	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
-	for (it; it != this->_fdToServers.end(); ++it)
-	{
-		addToEpoll(it->first, EPOLLIN | EPOLLET);
-	}
-}
-
-int WebServer::isServerFDCheck(const int &i) const {
-	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
-	for (it; it != this->_fdToServers.end(); ++it)
-	{
-		if ( i == it->first)
-			return (it->first);
-	}
-	return (-1);
-}
-
 void WebServer::acceptConnection(int *serverFd)
 {
 	struct sockaddr_storage peer_addr;
@@ -211,16 +201,13 @@ void WebServer::acceptConnection(int *serverFd)
 		return ;
 	}
 
-	//CHECAR COM A FERNANDA!!!!! Fernanda e Mari: Não deveria chear antes de abrir o socket com accept?
-	// check if total connections is greater than SOMAXCONN
-	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 1000;
+	int totalConnections = this->_conections.size() + this->_fdToServers.size() + 2048;
 	if (totalConnections >= SOMAXCONN)
 	{
 		if (newSockFD != -1)
 		{
-			Logger::log(LOG_WARNING, "Max connections reached, closing connection...");
-			Response response;
-			response.loadDefaultErrorPage(503);
+			Logger::log(LOG_ERROR, "Max connections reached, closing connection fd: " + std::to_string(newSockFD));
+			sendErrorResponse(503, newSockFD, _fdToServers[*serverFd][0]);
 			close(newSockFD);
 		}
 		return ;
@@ -229,20 +216,18 @@ void WebServer::acceptConnection(int *serverFd)
 	std::map<int, std::vector<Server>>::iterator it = this->_fdToServers.find(*serverFd);
 	if (it != this->_fdToServers.end())
 	{
-        _conections[newSockFD] = it->second;
+		_conections[newSockFD] = it->second;
 		_requests[newSockFD] = new std::string();
-		modifyEpoll(it->first, EPOLLIN | EPOLLET);
 	}
 	else
 	{
 		Logger::log(LOG_ERROR, "Server socket fd not found!");
-		Response response;
-		response.loadDefaultErrorPage(503);
+		sendErrorResponse(503, newSockFD, _fdToServers[*serverFd][0]);
 		close(newSockFD);
 		return ;
 	}
 
-	addToEpoll (newSockFD, EPOLLIN | EPOLLRDHUP);
+	addToEpoll (newSockFD, EPOLLIN  | EPOLLOUT | EPOLLRDHUP);
 	std::ostringstream oss;
 	oss << "Connection established between socket [" << *serverFd << "] and client [" << newSockFD << "]";
 	Logger::log(LOG_INFO, oss.str().c_str());
@@ -283,6 +268,25 @@ void WebServer::clearRequests(const int &fd)
 	}
 }
 
+void WebServer::sendErrorResponse(const int &statusCode, const int &fd, const Server &server)
+{
+	Response response;
+	response.loadErrorPage(statusCode, server, true);
+	std::vector<char> responseContent;
+	responseContent = response.getResponse();
+	write(fd, responseContent.data(), responseContent.size());
+}
+
+int WebServer::isServerFDCheck(const int &i) const {
+	std::map<int, std::vector<Server>>::const_iterator it = this->_fdToServers.begin();
+	for (it; it != this->_fdToServers.end(); ++it)
+	{
+		if ( i == it->first)
+			return (it->first);
+	}
+	return (-1);
+}
+
 int WebServer::ifResGetCGIKey(const int &fd)
 {
 	std::map<int, HandleCGI*>::const_iterator it = _requestsCGI.begin();
@@ -306,8 +310,10 @@ void WebServer::handleConnections()
 			break;
 
 		if (totalFD == -1)
-			throw std::runtime_error("epoll_wait() failure");
-
+		{
+			Logger::log(LOG_ERROR, "epoll_wait() failure");
+			continue ;
+		}
 
 		for (int i = 0; i < totalFD; i++)
 		{
@@ -315,7 +321,10 @@ void WebServer::handleConnections()
 
 			int isServerFD = isServerFDCheck(events[i].data.fd);
 			if (isServerFD != -1)
+			{
 				acceptConnection(&isServerFD);
+				modifyEpoll(fd, EPOLLIN | EPOLLET);
+			}
 			else
 			{
 				if (events[i].events & EPOLLRDHUP)
@@ -333,12 +342,11 @@ void WebServer::handleConnections()
 
 						while (true)
 						{
-
 							ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
 							if (bread == 0)
 							{
 								closeCGIPipe(cgiH._pipefd[0], "EOF reached. Closing pipe fd: " + std::to_string(cgiH._pipefd[0]));
-                                cgiH.responseReady = 1;
+								cgiH.responseReady = 1;
 								break ;
 							}
 							else if (bread < 0)
@@ -382,14 +390,6 @@ void WebServer::handleConnections()
 									break;
 							}
 						}
-						if (_requests.find(fd) != _requests.end())
-						{
-							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
-							if (req.request_status == "complete")
-							{
-								modifyEpoll(fd, EPOLLOUT );
-							}
-						}
 					}
 				}
 				else if (events[i].events & EPOLLOUT)
@@ -418,15 +418,13 @@ void WebServer::handleConnections()
 						if (_requests.find(fd) != _requests.end())
 						{
 							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
-							//check if request is complete and if so, check if it is CGI or STATIC
 							if (req.request_status == "complete")
 							{
-								//check if request is CGI or STATIC
 								if (req.type == "CGI")
 								{
 									Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
 
-									HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateRequest(_conections[events[i].data.fd], req.host));
+									HandleCGI *cgiHandler = new HandleCGI(req, this->_epollFD, events[i].data.fd, delegateServer(_conections[events[i].data.fd], req.host));
 									int fdPipe = cgiHandler->executeCGI();
 
 									if (fdPipe == -1)
@@ -442,7 +440,7 @@ void WebServer::handleConnections()
 								if (req.type == "STATIC")
 								{
 									ResponseBuilder response;
-									response.buildResponse(delegateRequest(_conections[events[i].data.fd], req.host), req);
+									response.buildResponse(delegateServer(_conections[events[i].data.fd], req.host), req);
 									std::vector<char> responseString = response.getResponse();
 									size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
 									if (wbytes == 0)
@@ -457,26 +455,25 @@ void WebServer::handleConnections()
 									{
 										Logger::log(LOG_INFO, "Response sent successfully.");
 									}
-										closeConnection(fd, "Closing connection: " + std::to_string(fd));
+									closeConnection(fd, "Closing connection: " + std::to_string(fd));
 								}
 							}
 						}
 					}
 				}
-                else if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
-                {
+				else if ((events[i].events & EPOLLHUP) && (_requestsCGI.find(fd) != _requestsCGI.end()))
+				{
 					char buf[BUF_SIZE];
 					memset(buf, 0, BUF_SIZE);
-                    HandleCGI &cgiH = *_requestsCGI[fd];
-                    ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
-                    if (bread == 0)
+					HandleCGI &cgiH = *_requestsCGI[fd];
+					ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
+					if (bread == 0)
 						cgiH.responseReady = 1;
-                }
+				}
 			}
 		}
 	}
 }
-
 
 void WebServer::run() {
 	this->_epollFD = epoll_create1(0);

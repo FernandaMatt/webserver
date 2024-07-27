@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.cdnfonts.com/css/futura-maxi-cg-bold" rel="stylesheet">
-    <title>About</title>
+    <title>Delete Images</title>
     <style>
         html, body {
             height: 100%;
@@ -29,12 +29,12 @@
             display: flex;
             justify-content: flex-end;
             padding: 10px 20px;
-			box-sizing: border-box;
+            box-sizing: border-box;
         }
         nav a {
             color: white;
             text-decoration: none;
-			margin-right: 15px;
+            margin-right: 15px;
             font-size: 1.1em;
         }
         h1 {
@@ -44,25 +44,32 @@
         }
         .content {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             flex-grow: 1;
             width: 90%;
         }
-        .text-container {
-            flex: 1;
-            padding-right: 20px;
-			font-size: 1.2em;
-        }
         .image-container {
-            flex: 1;
             display: flex;
-            justify-content: center;
             align-items: center;
+            margin: 20px 0;
         }
         .image-container img {
-            max-width: 90%;
-            max-height: 70vh;
+            max-width: 200px;
+            max-height: 150px;
+            margin-right: 20px;
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+        button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -78,28 +85,38 @@
             <a href="/images">Auto Index</a>
         </nav>
     </header>
-    <h1>About The Project</h1>
+    <h1>Delete Images</h1>
     <div class="content">
         <div class="image-container">
-            <img src="../images/httpserver.png" alt="Sea">
+            <img src="./imagem1.jpg" alt="Imagem 1">
+            <button onclick="deleteImage('imagem1.jpg')">Delete Image 1</button>
         </div>
-		<div class="text-container">
-			<p>
-				The webserver project is about building a functional HTTP server
-				from scratch. The server should be able to serv a fully static
-				website and handle CGI. To accomplish that we needed a deep
-				understanding of network protocols and concurrency.
-			</p>
-			<p>
-				The server needs to handle HTTP requests and responses, manage
-				connections, and ensure server stability under different conditions.
-			</p>
-			<p>
-				The server connections needs to be non-blocking through the use of the
-				select, poll, or epoll system calls. In this project we used epoll!
-			</p>
-			</p>
+        <div class="image-container">
+            <img src="./imagem2.jpg" alt="Imagem 2">
+            <button onclick="deleteImage('imagem2.jpg')">Delete Image 2</button>
+        </div>
+        <div class="image-container">
+            <img src="./imagem3.jpg" alt="Imagem 3">
+            <button onclick="deleteImage('imagem3.jpg')">Delete Image 3</button>
         </div>
     </div>
+    <script>
+        function deleteImage(imageName) {
+            fetch('/delete/' + imageName, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Erro ao deletar arquivo ' + imageName + '. Status: ' + response.status);
+                }
+            })
+            .catch(error => {
+                alert('Erro ao deletar arquivo ' + imageName);
+                console.error('Error:', error);
+            });
+        }
+    </script>
 </body>
 </html>
