@@ -45,13 +45,6 @@ int HandleCGI::executeCGI() {
         if (pipe(pipeBody) != -1) {
             dup2(pipeBody[0], STDIN_FILENO);
             close(pipeBody[0]);
-            Logger::log(LOG_INFO, "Request body: " + _request.body);
-            if (_request.body.size() > 0) {
-                if (write(pipeBody[1], _request.body.c_str(), _request.body.size()) <= 0)
-                    Logger::log(LOG_ERROR, "write() failed");
-                else
-                    Logger::log(LOG_INFO, "Request body sent to CGI");
-            }
             close(pipeBody[1]);
         }
         else {
@@ -67,7 +60,6 @@ int HandleCGI::executeCGI() {
         char *const argv[] = { (char *)script_file, NULL };
 
         char **envp = buildEnv();
-
 
 		close(_pipefd[0]);
 
@@ -115,6 +107,16 @@ std::string HandleCGI::getCGIPath() {
         return "";
 
     std::string cgi_path = location.get_cgi_path();
+    if(!_request.aliasPath.empty())
+    {
+        if (!_request.aliasPath.empty() && _request.aliasPath.at(_request.aliasPath.size() - 1) == '/')
+            _request.aliasPath = _request.aliasPath.substr(0, _request.aliasPath.size() - 1);
+        if (!_request.aliasPath.empty() && _request.aliasPath.at(0) == '/')
+            _request.aliasPath = _request.aliasPath.substr(1);
+        if (!cgi_path.empty() && cgi_path.at(cgi_path.size() - 1) == '/')
+            cgi_path = cgi_path.substr(0, cgi_path.size() - 1);
+        cgi_path += "/" + _request.aliasPath;
+    }
     if (cgi_path.empty() || !isDirectory(cgi_path))
         return "";
 
@@ -123,7 +125,7 @@ std::string HandleCGI::getCGIPath() {
 
 std::string HandleCGI::getFullCGIPath() {
     std::string cgi_path = getCGIPath();
-    if (cgi_path.back() != '/')
+    if (!cgi_path.empty() && cgi_path.at(cgi_path.size() -1) != '/')
         cgi_path += '/';
     std::string cgi_full_path = cgi_path + _request.CGIfilename;
     if (!isFile(cgi_full_path))
@@ -133,26 +135,51 @@ std::string HandleCGI::getFullCGIPath() {
 
 bool HandleCGI::getCGILocation(Location &location) {
     std::vector<Location> locations = _server.get_location();
-    for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
-        if (_request.path == it->get_path()) {
-            location = *it;
-            return true;
+    std::string locationPath = _request.CGIpath;
+    std::size_t pos = _request.CGIpath.find_last_of("/");
+
+    while (pos != std::string::npos && locationPath.length() > 1)
+    {
+        for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
+            if (locationPath == it->get_path()) {
+                location = *it;
+                return true;
+            }
         }
+        locationPath = _request.CGIpath.substr(0, pos);
+        _request.aliasPath = _request.CGIpath.substr(pos);
+        pos = _request.CGIpath.find_last_of("/", pos - 1);
+
     }
     return false;
 }
 
+std::string HandleCGI::getPathTranslated() {
+    Location location;
+    if (!getCGILocation(location))
+        return "";
+    std::string path_translated = location.get_cgi_path();
+    std::string path_info = _request.extraPath;
+    if (!path_translated.empty() && path_translated.at(path_translated.size() - 1) != '/')
+        path_translated += '/';
+    if (!path_info.empty() && path_info.at(0) == '/')
+        path_info = path_info.substr(1);
+    path_translated += path_info;
+    return path_translated;
+}
+
 char ** HandleCGI::buildEnv() {
 
+    _env.clear();
     if (_request.body.size() > 0)
         _env.push_back("CONTENT_LENGTH=" + std::to_string(_request.body.size()));
     if (_request.headers.find("Content-Type") != _request.headers.end())
         _env.push_back("CONTENT_TYPE=" + _request.headers["Content-Type"]);
     _env.push_back("GATEWAY_INTERFACE=CGI/1.1");
     _env.push_back("PATH_INFO=" + _request.extraPath);
-    //PATH_TRANSLATED ??
+    if (!_request.extraPath.empty())
+        _env.push_back("PATH_TRANSLATED=" + getPathTranslated());
     _env.push_back("QUERY_STRING=" + _request.queryString);
-    //REMOTE_ADDR ??
     _env.push_back("REQUEST_METHOD=" + getMethod(_request.method));
     _env.push_back("SCRIPT_FILENAME=" + getFullCGIPath());
     _env.push_back("SCRIPT_NAME=" + _request.path);
@@ -240,8 +267,8 @@ std::map<std::string, std::string> HandleCGI::parseCGIHeaders()
         if (colon != std::string::npos) {
             std::string key = line.substr(0, colon);
             std::string value = line.substr(colon + 2);
-            while (value.size() && (value.back() == '\n' || value.back() == '\r'))
-                value.pop_back();
+            while (value.size() && (value.at(value.size() -1) == '\n' || value.size() && value.at(value.size() -1) == '\r'))
+                value = value.substr(0, value.size() - 1);
             headers[key] = value;
         }
         pos = end + 2;
