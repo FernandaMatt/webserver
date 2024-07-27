@@ -38,7 +38,6 @@ int HandleCGI::executeCGI() {
         return -1;
 	}
 
-        char **envp = buildEnv();
 	if (pid == 0) {
 
         int pipeBody[2];
@@ -66,6 +65,7 @@ int HandleCGI::executeCGI() {
 
         char *const argv[] = { (char *)script_file, NULL };
 
+        char **envp = buildEnv();
 
 		close(_pipefd[0]);
 
