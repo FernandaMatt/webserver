@@ -44,7 +44,6 @@ void Response::loadFromFile(const std::string& filePath, bool logError)
     oss << "Content-Length: " << _responseContent.size() << "\r\n";
     oss << "Content-Type: " << contentType << "\r\n\r\n";
     setHttpHeaders(oss.str());
-    setStatusMessage("HTTP/1.1 200 OK\r\n");
     loaded = true;
 }
 
@@ -221,6 +220,7 @@ void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
     std::ostringstream oss;
     oss << "HTTP/1.1 " << statusCode << " " << title << "\r\n";
     std::string statusMessage = oss.str();
+    std::cout << "statusMessage = " << statusMessage << std::endl;
 
     oss.str("");
     oss << "<!DOCTYPE html>";
@@ -252,6 +252,45 @@ void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
     setStatusMessage(statusMessage);
     setHttpHeaders(header);
     setResponseContent(responseContent);
+}
+
+void Response::setErrorStatusMessage(int statusCode) {
+    switch (statusCode) {
+        case 400:
+            setStatusMessage("HTTP/1.1 400 Bad Request\r\n");
+            break;
+        case 401:
+            setStatusMessage("HTTP/1.1 401 Unauthorized\r\n");
+            break;
+        case 403:
+            setStatusMessage("HTTP/1.1 403 Forbidden\r\n");
+            break;
+        case 404:
+            setStatusMessage("HTTP/1.1 404 Not Found\r\n");
+            break;
+        case 405:
+            setStatusMessage("HTTP/1.1 405 Method Not Allowed\r\n");
+            break;
+        case 413:
+            setStatusMessage("HTTP/1.1 413 Request Entity Too Large\r\n");
+            break;
+        case 500:
+            setStatusMessage("HTTP/1.1 500 Internal Server Error\r\n");
+            break;
+        case 501:
+            setStatusMessage("HTTP/1.1 501 Not Implemented\r\n");
+            break;
+        case 502:
+            setStatusMessage("HTTP/1.1 502 Bad Gateway\r\n");
+            break;
+        case 503:
+            setStatusMessage("HTTP/1.1 503 Service Unavailable\r\n");
+            break;
+        default:
+            setStatusMessage("HTTP/1.1 500 Internal Server Error\r\n");
+            break;
+    }
+
 }
 
 void Response::loadDefaultErrorPage(int statusCode) {
