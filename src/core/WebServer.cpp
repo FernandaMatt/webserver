@@ -470,6 +470,11 @@ void WebServer::handleConnections()
 					ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
 					if (bread == 0)
 						cgiH.responseReady = 1;
+					if (bread < 0)
+					{
+						Logger::log(LOG_ERROR, "Error reading from pipe. CGI response may be incomplete.");
+						cgiH.responseReady = 1;
+					}
 				}
 			}
 		}
