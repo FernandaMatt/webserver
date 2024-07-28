@@ -15,6 +15,18 @@ HandleCGI::~HandleCGI() {};
 
 int HandleCGI::executeCGI() {
 
+    if (!getCGILocation()) {
+        sendErrorResponse(404, _responseFd);
+        return -1;
+    }
+
+    std::size_t statusMethoBodySize = forbiddenMethodOrBodySize();
+
+    if (statusMethoBodySize != 200) {
+        sendErrorResponse(statusMethoBodySize, _responseFd);
+        return -1;
+    }
+
     std::string cgi_full_path = getFullCGIPath();
 
     if (cgi_full_path.empty()) {
@@ -108,11 +120,8 @@ int HandleCGI::executeCGI() {
 }
 
 std::string HandleCGI::getCGIPath() {
-    Location location;
-    if (!getCGILocation(location))
-        return "";
 
-    std::string cgi_path = location.get_cgi_path();
+    std::string cgi_path = _location.get_cgi_path();
     if(!_request.aliasPath.empty())
     {
         if (!_request.aliasPath.empty() && _request.aliasPath.at(_request.aliasPath.size() - 1) == '/')
@@ -139,7 +148,7 @@ std::string HandleCGI::getFullCGIPath() {
     return cgi_full_path;
 }
 
-bool HandleCGI::getCGILocation(Location &location) {
+bool HandleCGI::getCGILocation() {
     std::vector<Location> locations = _server.get_location();
     std::string locationPath = _request.CGIpath;
     std::size_t pos = _request.CGIpath.find_last_of("/");
@@ -148,7 +157,7 @@ bool HandleCGI::getCGILocation(Location &location) {
     {
         for (std::vector<Location>::iterator it = locations.begin(); it != locations.end(); ++it) {
             if (locationPath == it->get_path()) {
-                location = *it;
+                _location = *it;
                 return true;
             }
         }
@@ -161,10 +170,7 @@ bool HandleCGI::getCGILocation(Location &location) {
 }
 
 std::string HandleCGI::getPathTranslated() {
-    Location location;
-    if (!getCGILocation(location))
-        return "";
-    std::string path_translated = location.get_cgi_path();
+    std::string path_translated = _location.get_cgi_path();
     std::string path_info = _request.extraPath;
     if (!path_translated.empty() && path_translated.at(path_translated.size() - 1) != '/')
         path_translated += '/';
@@ -305,4 +311,38 @@ std::string HandleCGI::getMethod(int method) {
     else if (method == DELETE)
         return "DELETE";
     return "";
+}
+
+bool HandleCGI::isMethodAllowed(const std::string &method) {
+    if (std::find(_location.get_methods().begin(), _location.get_methods().end(), method) == _location.get_methods().end()) {
+        return false;
+    }
+    return true;
+}
+
+bool HandleCGI::isBodySizeAllowed() {
+    if (_request.body.length() > _location.get_client_max_body_size()) {
+        return false;
+    }
+    return true;
+}
+
+int HandleCGI::forbiddenMethodOrBodySize() {
+    std::string method = "OTHER";
+    if (_request.method == GET) {
+       method = "GET";
+    }
+    else if (_request.method == POST) {
+        method = "POST";
+    }
+    else if (_request.method == DELETE) {
+        method = "DELETE";
+    }
+    if (!isMethodAllowed(method)) {
+        return 405;
+    }
+    if ((method == "GET" || method == "POST") && !isBodySizeAllowed()) {
+        return 413;
+    }
+    return 200;
 }
