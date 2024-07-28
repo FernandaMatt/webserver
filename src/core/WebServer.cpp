@@ -274,7 +274,8 @@ void WebServer::sendErrorResponse(const int &statusCode, const int &fd, const Se
 	response.loadErrorPage(statusCode, server, true);
 	std::vector<char> responseContent;
 	responseContent = response.getResponse();
-	write(fd, responseContent.data(), responseContent.size());
+	if (write(fd, responseContent.data(), responseContent.size()) <= 0)
+        Logger::log(LOG_ERROR, "write() failure, response not sent.");
 }
 
 int WebServer::isServerFDCheck(const int &i) const {
