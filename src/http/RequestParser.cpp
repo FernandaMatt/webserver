@@ -28,6 +28,7 @@ httpRequest RequestParser::parseRequest(std::string request)
     req.queryVariables.clear();
     req.extraPath.clear();
     req.aliasPath.clear();
+    req.type == "STATIC";
 	try {
 		req.method = getMethod(parsing_request);
 		req.path = getPath(parsing_request);
@@ -48,12 +49,12 @@ httpRequest RequestParser::parseRequest(std::string request)
 		req.port = getPort(req.headers["Host"]);
 		req.request_status = getRequestStatus(req);
 	} catch (std::exception &e) {
-		if (std::string(e.what()) == "Bad request")
+		if (std::string(e.what()) == "Bad request") {
 			req.statusCode = 400;
+        }
 		if (std::string(e.what()) == "Method not allowed")
 			req.statusCode = 405;
         req.request_status = "complete";
-        req.type = "STATIC";
 		return req;
 	}
 	req.statusCode = 200;
