@@ -157,7 +157,7 @@ void ResponseBuilder::searchRoot() {
         loadResponseFromFile(index_file_path);
         return;
     }
-    _response.loadDefaultErrorPage(403);// CHECK THE RIGHT ERROR when the path configured in the .conf file does not exist
+    _response.loadDefaultErrorPage(404);
 }
 
 void ResponseBuilder::searchLocation() {
