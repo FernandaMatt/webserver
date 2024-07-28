@@ -220,7 +220,6 @@ void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
     std::ostringstream oss;
     oss << "HTTP/1.1 " << statusCode << " " << title << "\r\n";
     std::string statusMessage = oss.str();
-    std::cout << "statusMessage = " << statusMessage << std::endl;
 
     oss.str("");
     oss << "<!DOCTYPE html>";
