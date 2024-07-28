@@ -23,8 +23,12 @@ class HandleCGI {
         httpRequest                 _request;
         std::vector<std::string>    _env;
         int                         _fdEpool;
+        Location                    _location;
 
-        bool        getCGILocation(Location &location);
+        bool        getCGILocation();
+        bool        isMethodAllowed(const std::string &method);
+        int         forbiddenMethodOrBodySize();
+        bool        isBodySizeAllowed();
         std::string getFullCGIPath();
         std::string getCGIPath();
         std::string getPathTranslated();

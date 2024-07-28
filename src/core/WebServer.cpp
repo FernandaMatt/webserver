@@ -274,7 +274,8 @@ void WebServer::sendErrorResponse(const int &statusCode, const int &fd, const Se
 	response.loadErrorPage(statusCode, server, true);
 	std::vector<char> responseContent;
 	responseContent = response.getResponse();
-	write(fd, responseContent.data(), responseContent.size());
+	if (write(fd, responseContent.data(), responseContent.size()) <= 0)
+        Logger::log(LOG_ERROR, "write() failure, response not sent.");
 }
 
 int WebServer::isServerFDCheck(const int &i) const {
@@ -443,7 +444,7 @@ void WebServer::handleConnections()
 									response.buildResponse(delegateServer(_conections[events[i].data.fd], req.host), req);
 									std::vector<char> responseString = response.getResponse();
 									size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-									if (wbytes == 0)
+									if (wbytes <= 0)
 									{
 										Logger::log(LOG_ERROR, "write() failure, response not sent.");
 									}
@@ -469,6 +470,11 @@ void WebServer::handleConnections()
 					ssize_t bread = read(cgiH._pipefd[0], buf, BUF_SIZE);
 					if (bread == 0)
 						cgiH.responseReady = 1;
+					if (bread < 0)
+					{
+						Logger::log(LOG_ERROR, "Error reading from pipe. CGI response may be incomplete.");
+						cgiH.responseReady = 1;
+					}
 				}
 			}
 		}

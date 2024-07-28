@@ -28,7 +28,7 @@ void Response::loadFromFile(const std::string& filePath, bool logError)
     if (!fileStream) {
         if (logError)
             Logger::log(LOG_ERROR, "Error opening file: " + filePath);
-        loadDefaultErrorPage(404); //use throw
+        loadDefaultErrorPage(404);
         return;
     }
 
@@ -220,7 +220,6 @@ void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
     std::ostringstream oss;
     oss << "HTTP/1.1 " << statusCode << " " << title << "\r\n";
     std::string statusMessage = oss.str();
-    std::cout << "statusMessage = " << statusMessage << std::endl;
 
     oss.str("");
     oss << "<!DOCTYPE html>";
