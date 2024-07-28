@@ -52,6 +52,8 @@ httpRequest RequestParser::parseRequest(std::string request)
 			req.statusCode = 400;
 		if (std::string(e.what()) == "Method not allowed")
 			req.statusCode = 405;
+        req.request_status = "complete";
+        req.type = "STATIC";
 		return req;
 	}
 	req.statusCode = 200;
