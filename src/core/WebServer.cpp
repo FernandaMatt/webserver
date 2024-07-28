@@ -421,6 +421,7 @@ void WebServer::handleConnections()
 							httpRequest req = RequestParser::parseRequest(*_requests[fd]);
 							if (req.request_status == "complete")
 							{
+								req.printRequest();
 								if (req.type == "CGI")
 								{
 									Logger::log(LOG_WARNING, "CGI Request RECEIVED. Handling..." );
