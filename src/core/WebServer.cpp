@@ -444,7 +444,7 @@ void WebServer::handleConnections()
 									response.buildResponse(delegateServer(_conections[events[i].data.fd], req.host), req);
 									std::vector<char> responseString = response.getResponse();
 									size_t wbytes = write(events[i].data.fd, responseString.data(), responseString.size());
-									if (wbytes == 0)
+									if (wbytes <= 0)
 									{
 										Logger::log(LOG_ERROR, "write() failure, response not sent.");
 									}

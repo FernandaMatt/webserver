@@ -231,7 +231,8 @@ void HandleCGI::sendErrorResponse(int statusCode, int fd) {
 
     std::vector<char> responseContent;
     responseContent = response.getResponse();
-    write(_responseFd, responseContent.data(), responseContent.size());
+    if (write(_responseFd, responseContent.data(), responseContent.size()) <= 0)
+        Logger::log(LOG_ERROR, "write() from HandleCGI::sendoErrorResponse failed");
 }
 
 bool HandleCGI::isDirectory(std::string path) {
