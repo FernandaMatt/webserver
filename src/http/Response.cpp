@@ -28,7 +28,7 @@ void Response::loadFromFile(const std::string& filePath, bool logError)
     if (!fileStream) {
         if (logError)
             Logger::log(LOG_ERROR, "Error opening file: " + filePath);
-        loadDefaultErrorPage(404); //use throw
+        loadDefaultErrorPage(404);
         return;
     }
 
