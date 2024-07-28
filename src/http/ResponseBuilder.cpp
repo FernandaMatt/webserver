@@ -46,9 +46,9 @@ bool ResponseBuilder::isBodySizeAllowed() {
     return true;
 }
 
-void ResponseBuilder::checkMethodAndBodySize() { //NEED TO MAKE MORE TESTES to check if the verification are correct
-    std::string method;
-    if (_parsedRequest.method == GET) { //stop using Enum for GET, POST, DELETE, and only use std::string
+void ResponseBuilder::checkMethodAndBodySize() {
+    std::string method = "OTHER";
+    if (_parsedRequest.method == GET) {
        method = "GET";
     }
     else if (_parsedRequest.method == POST) {
