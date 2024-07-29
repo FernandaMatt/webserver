@@ -216,6 +216,36 @@ void Response::loadErrorPage(int statusCode, Server server, bool logError) {
     loadFromFile(error_page_full_path);
 }
 
+std::string Response::getRedirectStatusMessage(const std::string &code) {
+    if (code == "301")
+        return "HTTP/1.1 301 Moved Permanently\r\n";
+    else if (code == "302")
+        return "HTTP/1.1 302 Found\r\n";
+    else if (code == "303")
+        return "HTTP/1.1 303 See Other\r\n";
+    else if (code == "304")
+        return "HTTP/1.1 304 Not Modified\r\n";
+    else if (code == "305")
+        return "HTTP/1.1 305 Use Proxy\r\n";
+    else if (code == "307")
+        return "HTTP/1.1 307 Temporary Redirect\r\n";
+    else if (code == "308")
+        return "HTTP/1.1 308 Permanent Redirect\r\n";
+    else
+        return "HTTP/1.1 300 Multiple Choices\r\n";
+}
+
+void Response::loadRedirect(const std::string &code, const std::string &path) {
+    setStatusMessage(getRedirectStatusMessage(code));
+    std::ostringstream oss;
+    oss << "Location: " << path << "\r\n\r\n";
+    oss << "Content-Length: 0\r\n";
+    oss << "Connection: close\r\n";
+    setHttpHeaders(oss.str());
+    _responseContent.clear();
+    loaded = true;
+}
+
 void Response::setDefaultErrorPage(int statusCode, const std::string &title) {
     std::ostringstream oss;
     oss << "HTTP/1.1 " << statusCode << " " << title << "\r\n";

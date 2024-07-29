@@ -27,6 +27,7 @@ class Location {
         void    set_upload_path(std::string upload_path);
         void    set_cgi_path(std::string cgi_path);
         void    set_cgi_ext(std::string cgi_ext);
+        void    set_redirect(std::string redirect);
 
         //getters
     	std::string                 get_path() const;
@@ -42,6 +43,9 @@ class Location {
         std::string&                get_upload_path();
         std::string&                get_cgi_path();
         std::string&                get_cgi_ext();
+        bool                        get_redirect();
+        std::string&                get_redirect_path();
+        std::string&                get_redirect_code();
 
         std::string                 search_index_file(std::string path);
 
@@ -60,6 +64,9 @@ class Location {
         std::string                 _upload_path;
         std::string                 _cgi_path;
         std::string                 _cgi_ext;
+        bool                        _redirect;
+        std::string                 _redirect_path;
+        std::string                 _redirect_code;
 };
 
 #endif
