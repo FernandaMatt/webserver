@@ -31,6 +31,7 @@ class Response {
 
         void loadFromFile(const std::string& filePath, bool logError = true);
         void loadAutoIndex(std::string &path, std::string &request_path);
+        void loadRedirect(const std::string &code, const std::string &path);
         void loadErrorPage(int statusCode, Server server, bool logError = true);
         void loadDefaultErrorPage(int statusCode);
         void setDefaultErrorPage(int statusCode, const std::string &message);
@@ -62,6 +63,7 @@ class Response {
         std::string             getContentType(const std::string& filePath);
         std::vector<char>       stringToVector(const std::string& str);
         std::vector<FileInfo>   getFilesInDirectory(const std::string &directoryPath);
+        std::string             getRedirectStatusMessage(const std::string &code);
 };
 
 #endif

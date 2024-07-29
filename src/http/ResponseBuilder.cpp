@@ -192,6 +192,10 @@ void ResponseBuilder::processGET() {
     if (pathIsFile()) //check if the path is a file using the server root and index
         return;
     defineLocation();
+    if (_location.get_redirect()) {
+        _response.loadRedirect(_location.get_redirect_code(), _location.get_redirect_path());
+        return;
+    }
     if (_response.loaded)
         return;
     checkMethodAndBodySize();
@@ -273,6 +277,12 @@ void ResponseBuilder::processPOST() {
     // if not, just create the file with the correct extension
     //save the content to a specific path
     defineLocation();
+
+    if (_location.get_redirect()) {
+        _response.loadRedirect(_location.get_redirect_code(), _location.get_redirect_path());
+        return;
+    }
+
     checkMethodAndBodySize();
 
     std::map<std::string, std::vector<char>> map;

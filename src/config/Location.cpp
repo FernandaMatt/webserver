@@ -3,6 +3,7 @@
 Location::Location() {
     _client_max_body_size = -1;
     _timeout = -1;
+    _redirect = false;
 }
 
 Location::~Location() {
@@ -22,6 +23,9 @@ Location& Location::operator=(const Location &obj){
         _upload_path = obj._upload_path;
         _cgi_path = obj._cgi_path;
         _cgi_ext = obj._cgi_ext;
+        _redirect = obj._redirect;
+        _redirect_code = obj._redirect_code;
+        _redirect_path = obj._redirect_path;
     }
 	return(*this);
 }
@@ -232,6 +236,21 @@ void    Location::set_cgi_ext(std::string cgi_ext) {
     _cgi_ext = cgi_ext;
 }
 
+void    Location::set_redirect(std::string redirect) {
+    if (_redirect)
+        throw std::runtime_error("Error in config file: duplicate directive redirect");
+    size_t pos_space = redirect.find(' ');
+    if (pos_space == std::string::npos)
+        throw std::runtime_error("Error in config file: invalid number of arguments in redirect");
+    _redirect = true;
+    _redirect_code = redirect.substr(0, pos_space);
+    if (_redirect_code != "300" && _redirect_code != "301" && _redirect_code != "302"
+        && _redirect_code != "303" && _redirect_code != "304" && _redirect_code != "305"
+        && _redirect_code != "307" && _redirect_code != "308")
+        throw std::runtime_error("Error in config file: invalid redirect code");
+    _redirect_path = redirect.substr(pos_space + 1);
+}
+
 //getters
 std::string                 Location::get_path() const {return _path;}
 
@@ -264,6 +283,12 @@ std::string&    Location::get_upload_path() {return _upload_path;}
 std::string&    Location::get_cgi_path() {return _cgi_path;}
 
 std::string&    Location::get_cgi_ext() {return _cgi_ext;}
+
+bool    Location::get_redirect() {return _redirect;}
+
+std::string&    Location::get_redirect_path() {return _redirect_path;}
+
+std::string&    Location::get_redirect_code() {return _redirect_code;}
 
 void    Location::print_all_directives() const {
 

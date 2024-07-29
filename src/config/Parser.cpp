@@ -181,6 +181,8 @@ void    Parser::set_location_directives(std::string &key, std::string &value, Lo
         location.set_cgi_path(value);
     else if (key == "cgi_ext")
         location.set_cgi_ext(value);
+    else if (key == "redirect")
+        location.set_redirect(value);
 
     key.clear();
     value.clear();
@@ -274,7 +276,7 @@ Location    &Parser::parse_location(std::string &location_str, Location &locatio
         else if (key == "root" || key == "alias" || key == "index" || key == "autoindex" ||
                     key == "allow_methods" || key == "client_max_body_size" ||
                     key == "error_page" || key == "cgi_path" || key == "cgi_ext" ||
-                    key == "upload_path" || key == "keepalive_timeout")
+                    key == "upload_path" || key == "keepalive_timeout" || key == "redirect")
             set_location_directives(key, value, location);
         //invalid directive or other error
         else
