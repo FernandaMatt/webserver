@@ -27,11 +27,7 @@ monitor_memory() {
         else
             # Calculate memory usage percentage
             MEM_PERCENT=$(echo "scale=2; $MEM_USAGE * 10 / ($TOTAL_MEM / 1024)" | bc)
-            if (( $(echo "$MEM_PERCENT > $MEMORY_THRESHOLD_PERCENT" | bc -l) )); then
-                echo "Memory usage is too high: ${MEM_PERCENT}% ($MEM_USAGE_MB MB out of $(echo "$TOTAL_MEM / 1024" | bc) MB)"
-            else
-                echo "Memory usage is normal: ${MEM_PERCENT}% ($MEM_USAGE_MB MB out of $(echo "$TOTAL_MEM / 1024" | bc) MB)"
-            fi
+            echo "Memory usage: ${MEM_PERCENT}% ($MEM_USAGE_MB MB out of $(echo "$TOTAL_MEM / 1024" | bc) MB)"
         fi
         sleep $CHECK_INTERVAL
     done
