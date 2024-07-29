@@ -249,6 +249,8 @@ void    Location::set_redirect(std::string redirect) {
         && _redirect_code != "307" && _redirect_code != "308")
         throw std::runtime_error("Error in config file: invalid redirect code");
     _redirect_path = redirect.substr(pos_space + 1);
+    if (_redirect_path.find(' ') != std::string::npos)
+        throw std::runtime_error("Error in config file: invalid number of arguments in redirect");
 }
 
 //getters
